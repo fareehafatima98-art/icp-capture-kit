@@ -28,7 +28,10 @@ class Req(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return (HERE / "web" / "index.html").read_text(encoding="utf-8")
+    html = (HERE / "web" / "index.html").read_text(encoding="utf-8")
+    # no-store so a new deploy's UI is served immediately instead of a stale
+    # cached copy (the page is tiny, so there's nothing to gain from caching).
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 @app.post("/api/capture")
 def make(req: Req):
