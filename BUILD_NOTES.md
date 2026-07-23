@@ -11,3 +11,4 @@ something changes. Newest entries at the bottom.
 - 2026-07-23 — Added BUILD_NOTES.md to track repo changes going forward.
 - 2026-07-23 — Upgraded engine + UI to v2: per-prospect sequences (each of 5 prospects gets its own tailored 5-email sequence, ~25 emails), progressive Apollo fallback that surfaces errors, and a tabbed results UI. Re-applied the read-only-filesystem guard to build_kit (v2 had dropped it) so it still runs on Vercel. Note: v2 makes ~6 sequential Claude calls, which risks exceeding Vercel's 60s function limit.
 - 2026-07-23 — Parallelized the 5 per-prospect Claude calls in build_kit (ThreadPoolExecutor) so wall-clock is ~1 call instead of 5 in a row, keeping the request under Vercel's 60s limit. Output and ordering unchanged.
+- 2026-07-23 — Served the home page with Cache-Control: no-store so a fresh deploy's UI shows immediately instead of a stale browser-cached copy.
