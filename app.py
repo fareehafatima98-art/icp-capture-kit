@@ -32,7 +32,11 @@ def home():
 
 @app.post("/api/capture")
 def make(req: Req):
+    # Catch SystemExit too: the engine raises it for missing keys / deps, and
+    # SystemExit is NOT an Exception subclass, so a bare `except Exception`
+    # would let it escape as a hard 500 ("Internal Server Error") that the
+    # page can't parse. Returning JSON lets the UI show the real reason.
     try:
         return JSONResponse(capture.build_kit(req.domain))
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+    except (Exception, SystemExit) as e:
+        return JSONResponse({"error": str(e) or e.__class__.__name__}, status_code=500)
