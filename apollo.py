@@ -5,7 +5,7 @@ Apollo REST client for the Capture Kit agent (v3).
 """
 import os, json, urllib.request
 
-BASE = "https://api.apollo.io/v1"
+BASE = "https://api.apollo.io/api/v1"
 
 class Apollo:
     def __init__(self, api_key=None):
@@ -35,7 +35,10 @@ class Apollo:
         if seniorities:            body["person_seniorities"] = seniorities
         if person_locations:       body["person_locations"] = person_locations
         if organization_locations: body["organization_locations"] = organization_locations
-        r = self._post("/mixed_people/search", body)
+        # Public People Search API endpoint (free, 0 credits). The bare
+        # /mixed_people/search path is Apollo's internal UI route and returns
+        # 403 for API keys. This endpoint requires a MASTER Apollo API key.
+        r = self._post("/mixed_people/api_search", body)
         total = (r.get("pagination") or {}).get("total_entries")
         sample = [{"id": p.get("id"),
                    "first_name": p.get("first_name"),
