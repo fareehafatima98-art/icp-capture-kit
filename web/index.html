@@ -52,6 +52,7 @@
   .cta a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:12px;margin-top:8px}
   .warn{margin:14px 0;color:#E9C46A;background:#241d10;border:1px solid #4d3f1e;border-radius:12px;padding:13px 16px;font-size:14px}
   .err{display:none;margin-top:20px;color:#E9A;background:#2a1714;border:1px solid #5b2b22;border-radius:12px;padding:16px}
+  .vidslot{margin:0 0 18px;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
   .foot{color:var(--muted);font-size:12px;margin-top:36px;text-align:center}
 </style>
 </head>
@@ -118,12 +119,29 @@ function render(k){
         ${e.asset?`<a class="asset" href="${esc(e.asset.url||'#')}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
       return `<div class="pk${i===0?' on':''}">
         <div class="about"><b>${esc(p.name||p.first_name||"")}</b> — ${esc(p.title||"")}${p.company?`, ${esc(p.company)}`:""}
-        ${p.email?` · <span style="color:var(--ok)">${esc(p.email)}</span>`:""}<br>${esc(pk.about||"")}</div>${emails}</div>`;
+        ${p.email?` · <span style="color:var(--ok)">${esc(p.email)}</span>`
+                  :` · <span style="color:var(--muted)">no verified email found${p.linkedin_url?`, <a style="color:var(--accent)" href="${esc(p.linkedin_url)}" target="_blank">LinkedIn instead</a>`:""}</span>`}
+        <br>${esc(pk.about||"")}</div>${emails}</div>`;
     }).join("");
   }
-  out += `<div class="cta"><p>Want this built and run for you every week?</p><a href="#">Let's talk</a></div>
+  if(k.share_url){
+    out += `<div class="lead" style="margin-top:24px"><b>Shareable link</b> — send this page as-is:
+      <a style="color:var(--accent);word-break:break-all" href="${esc(k.share_url)}" target="_blank">${esc(k.share_url)}</a>
+      <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(k.share_url)}');this.textContent='Copied'">Copy link</button></div>`;
+  }
+  out += `<div class="cta"><h3 style="text-align:center;margin:0 0 .4em">Want this built and run for you every week?</h3>
+    <div class="vidslot">a 60-second video from Fareeha lands here this week</div>
+    <p style="text-align:center">Pick a time right here, no redirects.</p>
+    <div class="calendly-inline-widget" data-url="https://calendly.com/hifareeha/discovery-meeting-with-fareeha?hide_gdpr_banner=1" style="min-width:320px;height:660px;"></div>
+    <div style="color:var(--muted);font-size:13px;text-align:center;margin-top:8px">Or just reply to hello@fareehafatima.com and we'll find a time.</div></div>
     <div class="foot">Generated from ${esc(k.domain)} + live prospect data</div>`;
+  loadCalendly();
   return out;
+}
+function loadCalendly(){
+  if(document.getElementById('caljs')) { if(window.Calendly) setTimeout(()=>window.Calendly.initInlineWidgets&&window.Calendly.initInlineWidgets(),300); return; }
+  const s=document.createElement('script'); s.id='caljs'; s.src='https://assets.calendly.com/assets/external/widget.js'; s.async=true;
+  document.body.appendChild(s);
 }
 
 async function go(){
@@ -141,6 +159,7 @@ async function go(){
     STEPS.forEach(s=>{const el=document.getElementById(s);el.classList.add('done');el.querySelector('.dot').textContent='✓';});
     btn.disabled=false;
     if(!r.ok||k.error){err.textContent=k.error||'Something went wrong.';err.style.display='block';proc.style.display='none';return;}
+    if(k.cached&&k.share_url){window.location.href=k.share_url;return;}
     setTimeout(()=>{proc.style.display='none';res.innerHTML=render(k);res.style.display='block';res.scrollIntoView({behavior:'smooth',block:'start'});},400);
   }catch(e){clearTimeout(stepTimer);btn.disabled=false;err.textContent='Could not reach the agent: '+e.message;err.style.display='block';}
 }
