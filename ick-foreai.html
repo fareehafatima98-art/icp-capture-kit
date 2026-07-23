@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ICP Capture Kit — fore ai</title>
+<style>
+  :root{--ink:#12100E;--ink2:#1B1815;--card:#1E1A16;--line:#332C25;--cream:#FAF7F2;
+    --muted:#A79C90;--accent:#E8531A;--accent2:#FF7A45;--ok:#4ADE80}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--cream);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:780px;margin:0 auto;padding:44px 22px 90px}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.1;margin:.35em 0 .3em;font-weight:800}
+  .sub{color:var(--muted);font-size:16px;max-width:600px}
+  /* processing */
+  #proc{margin:34px 0;background:var(--ink2);border:1px solid var(--line);border-radius:16px;padding:24px}
+  #proc h3{margin:0 0 16px;font-size:15px;color:var(--muted);font-weight:600}
+  .step{display:flex;align-items:center;gap:12px;padding:9px 0;font-size:15px;color:var(--muted);opacity:.35;transition:.4s}
+  .step.active{opacity:1;color:var(--cream)}
+  .step.done{opacity:1;color:var(--cream)}
+  .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .step.active .dot{border-color:var(--accent);animation:spin 1s linear infinite}
+  .step.done .dot{border-color:var(--ok);color:var(--ok)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #results{display:none}
+  .reveal{animation:fade .6s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .lead{background:linear-gradient(145deg,#241d17,#1a1613);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:16px;padding:22px 24px;margin:8px 0 26px}
+  .lead b{color:var(--accent)}
+  .h2{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:30px 0 12px}
+  .buyer{display:flex;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:13px 16px;margin-bottom:8px;font-size:15px}
+  .buyer .co{color:var(--muted);font-size:13px}
+  .email{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;position:relative}
+  .email .tag{color:var(--accent);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .email .subj{font-weight:650;margin:6px 0 8px}
+  .email .body{color:#DBD2C7;font-size:14.5px;white-space:pre-wrap}
+  .email .asset{display:inline-block;margin-top:10px;color:var(--accent);font-size:13px;text-decoration:none;border:1px solid var(--line);
+    border-radius:8px;padding:5px 10px}
+  .copy{position:absolute;top:14px;right:14px;background:var(--ink2);border:1px solid var(--line);color:var(--muted);
+    font-size:12px;border-radius:8px;padding:5px 10px;cursor:pointer}
+  .copy:hover{color:var(--cream);border-color:var(--accent)}
+  .cta{margin-top:30px;background:linear-gradient(145deg,#2a2017,#1c1713);border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
+  .cta h3{margin:0 0 .3em;font-size:20px}.cta p{color:#DBD2C7;margin:.2em 0 16px}
+  .cta a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:12px}
+  .cta a:hover{background:var(--accent2)}
+  .vid{margin:14px 0 0;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+  .foot{color:var(--muted);font-size:12px;margin-top:36px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">ICP Capture Kit</div>
+  <h1>fore ai · your first five buyers, and how to land them</h1>
+  <p class="sub">I pointed my outbound agent at foreai.co. You'd normally run this yourself,
+    but I did it for you. Here's what it built.</p>
+
+  <div id="proc">
+    <h3>What the agent did</h3>
+    <div class="step" id="s0"><span class="dot">1</span>Reading foreai.co and your product pages</div>
+    <div class="step" id="s1"><span class="dot">2</span>Working out who actually buys (not who you'd guess)</div>
+    <div class="step" id="s2"><span class="dot">3</span>Finding real prospects that match, live</div>
+    <div class="step" id="s3"><span class="dot">4</span>Pulling your best case study and lead magnet</div>
+    <div class="step" id="s4"><span class="dot">5</span>Writing a ready-to-send sequence</div>
+  </div>
+
+  <div id="results">
+    <div class="lead reveal">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)">Who actually buys fore ai</div>
+      <div style="margin-top:6px">Heads of QA at regulated fintech, insurance and vertical SaaS, the teams with complex web
+      and mobile flows and a manual-testing bottleneck. There are about <b>965</b> in the US alone. Five to open first.</div>
+    </div>
+
+    <div class="h2">Your first five, pulled live</div>
+    <div class="buyer reveal"><div><b>Vinayak</b> — Director of QA<div class="co">PURE Insurance · high-net-worth P&amp;C</div></div></div>
+    <div class="buyer reveal"><div><b>Kerri</b> — Director of QA<div class="co">Sapiens · insurance software</div></div></div>
+    <div class="buyer reveal"><div><b>Pallavi</b> — Director of QA<div class="co">Origami Risk · risk &amp; insurance SaaS</div></div></div>
+    <div class="buyer reveal"><div><b>Suma</b> — Director of QA<div class="co">GetInsured · health-insurance exchange</div></div></div>
+    <div class="buyer reveal"><div><b>Prashanthi</b> — Director of QA<div class="co">GTreasury · treasury management SaaS</div></div></div>
+
+    <div class="h2">Your sequence, ready to send</div>
+
+    <div class="email reveal"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email 1 · the hook</div>
+      <div class="subj">{{first_name}}, the flow nobody wants to break</div>
+      <div class="body">Hi {{first_name}}, you're the last check before a broken flow reaches a customer. Manual regression can't cover every path before a release. fore ai writes those tests in plain English and reruns them every time you ship. Worth 15 minutes?</div>
+    </div>
+
+    <div class="email reveal"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email 2 · your lead magnet (real)</div>
+      <div class="subj">{{first_name}}, what manual QA is costing you</div>
+      <div class="body">Hi {{first_name}}, before we ever talk, here's a 2-minute read on what manual testing actually costs your team. Most QA leads are surprised by the number. No form wall, just your inputs.</div>
+      <a class="asset" href="https://tools.foreai.co/roi-calculator" target="_blank">Pulled from your site: ROI Calculator</a>
+    </div>
+
+    <div class="email reveal"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email 3 · your case study (real)</div>
+      <div class="subj">{{first_name}}, how a global bank de-risked releases</div>
+      <div class="body">Hi {{first_name}}, Intesa Sanpaolo tests full login and profile journeys end to end with fore ai, and UBS runs it inside their own cloud. Regulated, high-stakes, and no test maintenance. Happy to show the same on your flows.</div>
+      <a class="asset" href="https://foreai.co/customers/finance" target="_blank">Pulled from your site: Intesa Sanpaolo, UBS</a>
+    </div>
+
+    <div class="email reveal"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email 4 · try it (plain text)</div>
+      <div class="subj">{{first_name}}, run one test on your own app</div>
+      <div class="body">Hi {{first_name}}, easiest way to feel it: spin up a test on your own app in a few minutes, free. Describe a flow in plain English and watch it run. Want me to set one up on a flow you pick?</div>
+      <a class="asset" href="https://app.foreai.co" target="_blank">Pulled from your site: free trial</a>
+    </div>
+
+    <div class="email reveal"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email 5 · close the loop</div>
+      <div class="subj">{{first_name}}, closing the loop</div>
+      <div class="body">Hi {{first_name}}, I've reached out a few times about taking manual regression off your release path with fore ai. If it's not the season, no stress, the door's open. Either way, good luck with the roadmap.</div>
+    </div>
+
+    <div class="cta reveal">
+      <h3>This is a taste of what I'd do for fore ai full-time.</h3>
+      <div class="vid">your 60-second video goes here</div>
+      <p style="margin-top:16px">If you'd want someone building and running this every week, let's talk.</p>
+      <a href="#">Book 15 minutes</a>
+    </div>
+    <div class="foot">ICP Capture Kit · generated for fore ai from foreai.co + live prospect data</div>
+  </div>
+</div>
+
+<script>
+const steps=["s0","s1","s2","s3","s4"];
+let i=0;
+function run(){
+  if(i>0) document.getElementById(steps[i-1]).classList.replace("active","done"),
+          document.getElementById(steps[i-1]).querySelector(".dot").textContent="✓";
+  if(i<steps.length){
+    document.getElementById(steps[i]).classList.add("active");
+    i++; setTimeout(run, 1100);
+  } else {
+    setTimeout(()=>{ document.getElementById("results").style.display="block"; }, 300);
+  }
+}
+setTimeout(run, 500);
+function cp(btn){
+  const e=btn.parentElement;
+  const t=e.querySelector(".subj").textContent+"\n\n"+e.querySelector(".body").textContent;
+  navigator.clipboard.writeText(t).then(()=>{btn.textContent="Copied";setTimeout(()=>btn.textContent="Copy",1500);});
+}
+</script>
+</body>
+</html>
