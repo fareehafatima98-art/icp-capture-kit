@@ -63,6 +63,23 @@ This is a Python web app, so use a host that runs Python (Render is the simplest
 Any Python host works the same way (Railway, Fly.io). The keys always live on the host as
 environment variables, never in the repo.
 
+## Deploy on Vercel (free, no card)
+This repo is also wired for Vercel's free Hobby tier (`vercel.json` + `api/index.py` run the
+FastAPI app as a serverless function).
+
+1. Push this repo to GitHub.
+2. On vercel.com: **Add New -> Project**, import the repo. Framework Preset: **Other** (the
+   `vercel.json` handles routing; there's no build step).
+3. **Settings -> Environment Variables**, add: `ANTHROPIC_API_KEY`, `APOLLO_API_KEY`. Leave
+   `APOLLO_ENRICH` unset.
+4. Deploy, then test the `*.vercel.app` URL. Add `kit.fareehafatima.com` under
+   **Settings -> Domains** and point a CNAME at Vercel (set the record to **DNS only** in
+   Cloudflare while it verifies).
+
+Note: serverless functions cap at **60s** per request (Hobby ceiling). The agent runs two
+Claude calls plus a site crawl, so a slow target site can occasionally hit that limit; just
+retry, or move to a Python host (Render/Railway/Fly.io) for no time limit.
+
 ## Credit control
 Prospect **search** is free. **Enrichment** (real names + emails) is off and stays off unless you
 set `APOLLO_ENRICH=1`. You're running first-names-only, so leave it blank.

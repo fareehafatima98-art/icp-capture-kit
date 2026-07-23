@@ -100,9 +100,15 @@ def build_kit(domain):
     sequence = write_sequence(client, assets, market)
     kit_obj = {"domain": domain, "slug": slug, "assets": assets,
                "market": market, "sequence": sequence}
-    out = pathlib.Path(__file__).resolve().parent / "output" / slug
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "kit.json").write_text(json.dumps(kit_obj, indent=2), encoding="utf-8")
+    # Best-effort local persistence for the CLI. Serverless hosts (e.g. Vercel)
+    # have a read-only filesystem, so skip quietly if we cannot write; the kit
+    # is returned directly either way.
+    try:
+        out = pathlib.Path(__file__).resolve().parent / "output" / slug
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "kit.json").write_text(json.dumps(kit_obj, indent=2), encoding="utf-8")
+    except OSError:
+        pass
     return kit_obj
 
 if __name__ == "__main__":
