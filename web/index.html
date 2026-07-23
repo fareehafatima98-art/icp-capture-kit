@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ICP Capture Kit</title>
+<style>
+  :root{--ink:#12100E;--ink2:#1B1815;--card:#1E1A16;--line:#332C25;--cream:#FAF7F2;
+    --muted:#A79C90;--accent:#E8531A;--accent2:#FF7A45;--ok:#4ADE80}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--cream);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:780px;margin:0 auto;padding:46px 22px 90px}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+  h1{font-size:clamp(26px,4.5vw,40px);line-height:1.1;margin:.35em 0 .3em;font-weight:800}
+  .sub{color:var(--muted);font-size:16px;max-width:600px}
+  .bar{display:flex;gap:10px;margin:26px 0 6px;flex-wrap:wrap}
+  .bar input{flex:1;min-width:200px;background:var(--ink2);border:1px solid var(--line);color:var(--cream);
+    padding:15px 16px;border-radius:12px;font-size:16px}
+  .bar input:focus{outline:none;border-color:var(--accent)}
+  .bar button{background:var(--accent);color:#fff;border:0;padding:15px 26px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+  .bar button:hover{background:var(--accent2)}.bar button:disabled{opacity:.5;cursor:default}
+  .hint{color:var(--muted);font-size:13px}
+  #proc{display:none;margin:30px 0;background:var(--ink2);border:1px solid var(--line);border-radius:16px;padding:24px}
+  #proc h3{margin:0 0 14px;font-size:14px;color:var(--muted);font-weight:600}
+  .step{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:15px;color:var(--muted);opacity:.35;transition:.4s}
+  .step.active{opacity:1;color:var(--cream)}.step.done{opacity:1;color:var(--cream)}
+  .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px}
+  .step.active .dot{border-color:var(--accent);animation:spin 1s linear infinite}
+  .step.done .dot{border-color:var(--ok);color:var(--ok)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #results{display:none}
+  .lead{background:linear-gradient(145deg,#241d17,#1a1613);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:16px;padding:20px 22px;margin:8px 0 22px}
+  .lead b{color:var(--accent)}
+  .h2{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:28px 0 12px}
+  .buyer{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:8px;font-size:15px}
+  .buyer .co{color:var(--muted);font-size:13px}.buyer .em{color:var(--ok);font-size:12px}
+  .email{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;position:relative}
+  .email .tag{color:var(--accent);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .email .subj{font-weight:650;margin:6px 0 8px}.email .body{color:#DBD2C7;font-size:14.5px;white-space:pre-wrap}
+  .email .asset{display:inline-block;margin-top:10px;color:var(--accent);font-size:13px;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+  .copy{position:absolute;top:14px;right:14px;background:var(--ink2);border:1px solid var(--line);color:var(--muted);font-size:12px;border-radius:8px;padding:5px 10px;cursor:pointer}
+  .copy:hover{color:var(--cream);border-color:var(--accent)}
+  .cta{margin-top:28px;background:linear-gradient(145deg,#2a2017,#1c1713);border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center}
+  .cta a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:12px;margin-top:8px}
+  .err{display:none;margin-top:20px;color:#E9A;background:#2a1714;border:1px solid #5b2b22;border-radius:12px;padding:16px}
+  .foot{color:var(--muted);font-size:12px;margin-top:36px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">ICP Capture Kit</div>
+  <h1>Give me your domain. I'll build your first five buyers and the emails to land them.</h1>
+  <p class="sub">The agent reads your site, works out who actually buys, pulls real prospects, and writes
+    a ready-to-send sequence using your own case study and lead magnet.</p>
+
+  <div class="bar">
+    <input id="domain" placeholder="yourcompany.com" autocomplete="off" onkeydown="if(event.key==='Enter')go()"/>
+    <button id="btn" onclick="go()">Build my kit</button>
+  </div>
+  <div class="hint">Takes about a minute. It is reading real pages and live data, not guessing.</div>
+
+  <div id="proc">
+    <h3>What the agent is doing</h3>
+    <div class="step" id="s0"><span class="dot">1</span>Reading your site and product pages</div>
+    <div class="step" id="s1"><span class="dot">2</span>Working out who actually buys</div>
+    <div class="step" id="s2"><span class="dot">3</span>Finding real prospects that match</div>
+    <div class="step" id="s3"><span class="dot">4</span>Pulling your best case study and lead magnet</div>
+    <div class="step" id="s4"><span class="dot">5</span>Writing your sequence</div>
+  </div>
+
+  <div class="err" id="err"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+const STEPS=["s0","s1","s2","s3","s4"]; let si=0, stepTimer;
+function stepLoop(){
+  if(si>0){const p=document.getElementById(STEPS[si-1]);p.classList.replace("active","done");p.querySelector(".dot").textContent="✓";}
+  if(si<STEPS.length){document.getElementById(STEPS[si]).classList.add("active");si++;stepTimer=setTimeout(stepLoop,1400);}
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function cp(btn){const e=btn.parentElement;const t=e.querySelector(".subj").textContent+"\n\n"+e.querySelector(".body").textContent;
+  navigator.clipboard.writeText(t).then(()=>{btn.textContent="Copied";setTimeout(()=>btn.textContent="Copy",1500);});}
+
+function render(k){
+  const a=k.assets||{}, m=k.market||{}, seq=k.sequence||[];
+  const buyers=(m.prospects||[]).map(p=>`<div class="buyer"><b>${esc(p.name||p.first_name||"")}</b> — ${esc(p.title||"")}
+    <div class="co">${esc(p.company||"")}</div>${p.email?`<div class="em">${esc(p.email)}</div>`:""}</div>`).join("");
+  const emails=seq.map(e=>`<div class="email"><button class="copy" onclick="cp(this)">Copy</button>
+    <div class="tag">Email ${esc(e.n)} · ${esc(e.role||"")}</div>
+    <div class="subj">${esc(e.subject||"")}</div>
+    <div class="body">${esc(e.body||"")}</div>
+    ${e.asset?`<a class="asset" href="${esc(e.asset.url||'#')}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
+  let mkt = a.product_summary?`<b>${esc(a.company||k.domain)}</b> — ${esc(a.product_summary)}`:"";
+  if(m.market_size) mkt+=` <b>(${Number(m.market_size).toLocaleString()} buyers in range)</b>`;
+  return `<div class="lead">${mkt}</div>
+    <div class="h2">Your first five</div>${buyers}
+    <div class="h2">Your sequence, ready to send</div>${emails}
+    <div class="cta"><p>Want this built and run for you every week?</p><a href="#">Let's talk</a></div>
+    <div class="foot">Generated from ${esc(k.domain)} + live prospect data</div>`;
+}
+
+async function go(){
+  const raw=(document.getElementById('domain').value||'').trim();
+  if(!raw) return;
+  const btn=document.getElementById('btn'),proc=document.getElementById('proc'),
+        res=document.getElementById('results'),err=document.getElementById('err');
+  btn.disabled=true;err.style.display='none';res.style.display='none';res.innerHTML='';
+  proc.style.display='block';si=0;STEPS.forEach(s=>{const el=document.getElementById(s);el.className='step';el.querySelector('.dot').textContent=STEPS.indexOf(s)+1;});
+  stepLoop();
+  try{
+    const r=await fetch('/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:raw})});
+    const k=await r.json();
+    clearTimeout(stepTimer);
+    STEPS.forEach(s=>{const el=document.getElementById(s);el.classList.add('done');el.querySelector('.dot').textContent='✓';});
+    btn.disabled=false;
+    if(!r.ok||k.error){err.textContent=k.error||'Something went wrong.';err.style.display='block';proc.style.display='none';return;}
+    setTimeout(()=>{proc.style.display='none';res.innerHTML=render(k);res.style.display='block';res.scrollIntoView({behavior:'smooth',block:'start'});},400);
+  }catch(e){clearTimeout(stepTimer);btn.disabled=false;err.textContent='Could not reach the agent: '+e.message;err.style.display='block';}
+}
+</script>
+</body>
+</html>
