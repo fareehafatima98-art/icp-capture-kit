@@ -82,9 +82,9 @@ def render(kit):
                      f"{esc(p.get('title',''))}{', '+esc(p.get('company','')) if p.get('company') else ''}{em}{li}"
                      f"<br>{esc(pk.get('about',''))}</div>{emails}</div>")
 
+    # Render the video only when VIDEO_EMBED is set; nothing (no placeholder) otherwise.
     video = (f"<div class='vid'><iframe src='{esc(VIDEO_EMBED)}' allowfullscreen></iframe></div>"
-             if VIDEO_EMBED else
-             "<div class='vid'>a 60-second video from Fareeha lands here this week</div>")
+             if VIDEO_EMBED else "")
 
     total = kit.get("total_emails", sum(len(pk.get("emails", [])) for pk in pks))
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>

@@ -52,7 +52,6 @@
   .cta a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:12px;margin-top:8px}
   .warn{margin:14px 0;color:#E9C46A;background:#241d10;border:1px solid #4d3f1e;border-radius:12px;padding:13px 16px;font-size:14px}
   .err{display:none;margin-top:20px;color:#E9A;background:#2a1714;border:1px solid #5b2b22;border-radius:12px;padding:16px}
-  .vidslot{margin:0 0 18px;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
   .foot{color:var(--muted);font-size:12px;margin-top:36px;text-align:center}
 </style>
 </head>
@@ -130,7 +129,6 @@ function render(k){
       <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(k.share_url)}');this.textContent='Copied'">Copy link</button></div>`;
   }
   out += `<div class="cta"><h3 style="text-align:center;margin:0 0 .4em">Want this built and run for you every week?</h3>
-    <div class="vidslot">a 60-second video from Fareeha lands here this week</div>
     <p style="text-align:center">Pick a time right here, no redirects.</p>
     <div class="calendly-inline-widget" data-url="https://calendly.com/hifareeha/discovery-meeting-with-fareeha?hide_gdpr_banner=1" style="min-width:320px;height:660px;"></div>
     <div style="color:var(--muted);font-size:13px;text-align:center;margin-top:8px">Or just reply to hello@fareehafatima.com and we'll find a time.</div></div>

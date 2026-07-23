@@ -46,6 +46,10 @@ def make(req: Req):
         if storage.enabled():
             share = storage.save_kit(kit["slug"], report_html.render(kit))
         kit["share_url"] = share
+        # Surface why a share link is missing instead of silently returning null.
+        if not share:
+            kit["share_error"] = (storage.last_error() if storage.enabled()
+                                  else "blob storage not enabled (BLOB_READ_WRITE_TOKEN missing at runtime)")
         kit["cached"] = False
         return JSONResponse(kit)
     # Catch SystemExit too: the engine raises it for missing keys / deps, and
