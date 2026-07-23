@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: icp-capture-kit
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Set these in the Render dashboard (Environment tab). Never commit real keys.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APOLLO_API_KEY
+        sync: false
+      # Leave blank: first names only, no Apollo credits. Set to 1 to enrich.
+      - key: APOLLO_ENRICH
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.9
