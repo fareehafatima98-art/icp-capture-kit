@@ -2,7 +2,7 @@
 Thin Apollo REST client for the report engine.
 
 Cost control (Apollo bills per call on some endpoints):
-  - people_count()      -> /mixed_people/search      FREE (search, no enrichment)
+  - people_count()      -> /mixed_people/api_search  FREE (search, no enrichment)
   - company_count()     -> /mixed_companies/search   1 credit per call that returns >0
   - enrich_org()        -> /organizations/enrich     1 credit if found
 
@@ -12,7 +12,7 @@ run never burns credits unless you opt in.
 """
 import os, json, urllib.request, urllib.parse
 
-BASE = "https://api.apollo.io/v1"
+BASE = "https://api.apollo.io/api/v1"
 
 class Apollo:
     def __init__(self, api_key=None):
@@ -53,7 +53,10 @@ class Apollo:
         if employee_ranges: body["organization_num_employees_ranges"] = employee_ranges
         if keyword_tags:     body["q_organization_keyword_tags"] = keyword_tags
         if seniorities:      body["person_seniorities"] = seniorities
-        r = self._post("/mixed_people/search", body)
+        # Public People Search API is /mixed_people/api_search. The bare
+        # /mixed_people/search path is Apollo's internal UI route and returns
+        # 403 for API keys. Requires a MASTER Apollo API key.
+        r = self._post("/mixed_people/api_search", body)
         total = (r.get("pagination") or {}).get("total_entries")
         sample = [{"id": p.get("id"),
                    "first_name": p.get("first_name"),
