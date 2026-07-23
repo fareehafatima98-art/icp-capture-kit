@@ -16,6 +16,7 @@ Requires ANTHROPIC_API_KEY and APOLLO_API_KEY. Enrichment OFF by default
 (first names only, no credits); APOLLO_ENRICH=1 to reveal full names + emails.
 """
 import os, re, json, sys, pathlib
+from concurrent.futures import ThreadPoolExecutor
 import scrape_llm as core
 from apollo import Apollo
 
@@ -123,14 +124,24 @@ def build_kit(domain):
     assets = extract_assets(client, domain, site)
     market = find_prospects(assets, enrich=os.environ.get("APOLLO_ENRICH") == "1")
 
-    prospect_kits = []
-    for p in market.get("prospects", []):
+    # The per-prospect sequences are independent, so run them concurrently.
+    # This keeps wall-clock roughly at one Claude call instead of five in a
+    # row, which is what lets the whole request finish inside a serverless
+    # time limit (e.g. Vercel's 60s cap). Output/order is unchanged.
+    def one_kit(p):
         try:
             seq = write_prospect_sequence(client, assets, p)
         except Exception as e:
             seq = {"about": "", "emails": [], "error": str(e)}
-        prospect_kits.append({"prospect": p, "about": seq.get("about", ""),
-                              "emails": seq.get("emails", [])})
+        return {"prospect": p, "about": seq.get("about", ""),
+                "emails": seq.get("emails", [])}
+
+    prospects = market.get("prospects", [])
+    if prospects:
+        with ThreadPoolExecutor(max_workers=len(prospects)) as ex:
+            prospect_kits = list(ex.map(one_kit, prospects))  # map preserves order
+    else:
+        prospect_kits = []
 
     kit_obj = {"domain": domain, "slug": slug, "assets": assets, "market": market,
                "prospect_kits": prospect_kits,
