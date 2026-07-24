@@ -6,23 +6,6 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (REPAIR openhive kit to 25/25 — approved cost ~$0.15 API, 0 Apollo credits) The live
-      /k/openhive kit has only 2/5 sequences (Riley, Wayne); Kushal, Adir, Vic failed during
-      the browser run (front-end retry was unpushed). Repair WITHOUT a full rerun, using the
-      split endpoints via curl against https://kit.fareehafatima.com:
-      1. GET /k/openhive and parse out Riley's and Wayne's existing about + 5 emails each
-         (keep them verbatim).
-      2. POST /api/sequence {assets, prospect} for each of the 3 missing prospects below,
-         retrying once on empty/timeout:
-         Kushal: {"name":"Kushal Magar","first_name":"Kushal","title":"Co-founder and CEO","company":"SyncGTM","email":"kushal@syncgtm.com","linkedin_url":"http://www.linkedin.com/in/kushal-b-magar","city":"Sydney","country":"Australia"}
-         Adir: {"name":"Adir Zimerman","first_name":"Adir","title":"CEO & Founder","company":"Rainmakers","email":"adir@rainmakers.co.il","linkedin_url":"http://www.linkedin.com/in/adirzimerman"}
-         Vic: {"name":"Vic Ahmed","first_name":"Vic","title":"Founder & CEO","company":"PitchStart","email":"vic.ahmed@pitchstart.io","linkedin_url":"http://www.linkedin.com/in/vic-ahmed-17345","city":"Englewood","country":"United States"}
-         assets (from the analyze run, use as-is):
-         {"company":"OpenHive","product_summary":"OpenHive is a platform for deploying autonomous AI agents ('bees') that run go-to-market workflows like lead research, outreach, follow-up, enrichment, and CRM syncing on autopilot. Users describe their GTM process in plain language and Hive spawns agents that browse the web, send emails/LinkedIn messages, and manage pipeline like a human operator would.","icp_personas":["Founder/CEO","Head of Growth","Head of Sales","VP of Sales","Sales Operations Manager","SDR Manager","RevOps Manager"],"buyer_titles":["Founder","CEO","Head of Growth","Head of Sales","VP Sales","RevOps Manager"],"employee_ranges":["1,10","11,50","51,200"],"keyword_tags":["B2B SaaS","Startups","Sales & Marketing Automation","GTM/RevOps","Cold Outbound/Sales Tech"],"target_locations":[],"named_customers":[],"case_studies":[],"lead_magnets":[],"free_trial_url":"","proof_points":["5× Faster ramp-up from setup to qualified leads","3× Higher open rates from intelligent filtering and intent detection","5–7× Better conversion and lower spam than template-based outbound","14,208+ Agents online","4.9 / 5 Operator rating","99.98% Runtime uptime","<2 min Mean first run"]}
-      3. Assemble the full kit (domain open-hive.com, slug openhive, the assets above, market
-         with all 5 prospects, prospect_kits = 2 parsed + 3 new, total_emails) and POST
-         /api/share {kit}. Verify /k/openhive now shows 25 emails across 5 tabs.
-      4. Log the result in DONE.
 - [ ] (STRUCTURAL, so repairs are never manual again) Persist the kit JSON alongside the
       share page: /api/share also stores kits/kit-<slug>.json in Blob; add GET
       /api/kit/{slug} returning it; front-end + repairs can then resume/complete a partial
@@ -44,6 +27,13 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) REPAIRED openhive to 25/25 without a full rerun (0 Apollo credits, ~$0.10 API).
+      Parsed Riley's + Wayne's existing about + 5 emails each out of the live /k/openhive HTML and
+      kept them verbatim; POSTed /api/sequence for the 3 failed prospects (Kushal Magar/SyncGTM 5,
+      Adir Zimerman/Rainmakers 5, Vic Ahmed/PitchStart 5 — all landed first try, 28-57s); assembled
+      the kit in the original tab order [Kushal, Adir, Riley, Vic, Wayne] and POSTed /api/share.
+      Verified live: https://kit.fareehafatima.com/k/openhive now shows 25 emails across 5 tabs
+      (5 each), 0 dead links, Riley's/Wayne's original subjects intact. share_error=None.
 - [x] (Claude Code) CONFIRMED 25/25 LIVE on prod. edexia now renders a full, clean kit at
       https://kit.fareehafatima.com/k/edexia — 25 emails across 5 unique-company AU buyers
       (David Shaw/CREST, Dianne Bryant/Illawarra Grammar, Trish Stockbridge/Kambala, Bruce
