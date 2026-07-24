@@ -51,6 +51,8 @@
   .cta{margin-top:28px;background:linear-gradient(145deg,#2a2017,#1c1713);border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center}
   .cta a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:13px 24px;border-radius:12px;margin-top:8px}
   .warn{margin:14px 0;color:#E9C46A;background:#241d10;border:1px solid #4d3f1e;border-radius:12px;padding:13px 16px;font-size:14px}
+  .pending{color:var(--muted);font-size:14px;padding:12px 2px;animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
   .err{display:none;margin-top:20px;color:#E9A;background:#2a1714;border:1px solid #5b2b22;border-radius:12px;padding:16px}
   .foot{color:var(--muted);font-size:12px;margin-top:36px;text-align:center}
 </style>
@@ -82,11 +84,16 @@
 </div>
 
 <script>
+// The API is split so no single request runs all five sequences (that pushed the
+// combined run past Vercel's 60s cap). Flow: POST /api/analyze (site + prospects),
+// then POST /api/sequence per prospect in PARALLEL — each tab fills as it lands —
+// then POST /api/share to store the shareable page.
 const STEPS=["s0","s1","s2","s3","s4"]; let si=0, stepTimer;
 function stepLoop(){
   if(si>0){const p=document.getElementById(STEPS[si-1]);p.classList.replace("active","done");p.querySelector(".dot").textContent="✓";}
   if(si<STEPS.length){document.getElementById(STEPS[si]).classList.add("active");si++;stepTimer=setTimeout(stepLoop,2200);}
 }
+function stepsDone(){clearTimeout(stepTimer);STEPS.forEach(s=>{const el=document.getElementById(s);el.classList.add('done');el.querySelector('.dot').textContent='✓';});}
 function esc(s){return String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function cp(btn){const e=btn.parentElement;const t=e.querySelector(".subj").textContent+"\n\n"+e.querySelector(".body").textContent;
   navigator.clipboard.writeText(t).then(()=>{btn.textContent="Copied";setTimeout(()=>btn.textContent="Copy",1500);});}
@@ -94,52 +101,60 @@ function pick(i){
   document.querySelectorAll(".tab").forEach((t,j)=>t.classList.toggle("on",i===j));
   document.querySelectorAll(".pk").forEach((p,j)=>p.classList.toggle("on",i===j));
 }
+function pname(p){return p.name||p.first_name||"";}
 
-function render(k){
-  const a=k.assets||{}, m=k.market||{}, pks=k.prospect_kits||[];
-  let mkt = a.product_summary?`<b>${esc(a.company||k.domain)}</b> — ${esc(a.product_summary)}`:"";
-  if(m.market_size) mkt+=` <b>(${Number(m.market_size).toLocaleString()} buyers in range)</b>`;
-  let out = `<div class="lead">${mkt}</div>`;
-  if(m.error) out += `<div class="warn">Prospect search issue: ${esc(m.error)}</div>`;
-  if(!pks.length){
-    out += `<div class="warn">No matching prospects came back for this ICP. The sequence below is still usable; the live prospect pull can be rerun.</div>`;
-  } else {
-    out += `<div class="h2">Your first ${pks.length}, each with their own sequence (${esc(k.total_emails)} emails)</div>`;
-    out += `<div class="tabs">`+pks.map((pk,i)=>{
-      const p=pk.prospect||{};
-      return `<button class="tab${i===0?' on':''}" onclick="pick(${i})">${esc(p.name||p.first_name||('#'+(i+1)))} · ${esc(p.company||'')}</button>`;
-    }).join("")+`</div>`;
-    out += pks.map((pk,i)=>{
-      const p=pk.prospect||{};
-      const emails=(pk.emails||[]).map(e=>`<div class="email"><button class="copy" onclick="cp(this)">Copy</button>
-        <div class="tag">Email ${esc(e.n)} · ${esc(e.role||"")}</div>
-        <div class="subj">${esc(e.subject||"")}</div>
-        <div class="body">${esc(e.body||"")}</div>
-        ${e.asset?`<a class="asset" href="${esc(e.asset.url||'#')}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
-      return `<div class="pk${i===0?' on':''}">
-        <div class="about"><b>${esc(p.name||p.first_name||"")}</b> — ${esc(p.title||"")}${p.company?`, ${esc(p.company)}`:""}
-        ${p.email?` · <span style="color:var(--ok)">${esc(p.email)}</span>`
-                  :` · <span style="color:var(--muted)">no verified email found${p.linkedin_url?`, <a style="color:var(--accent)" href="${esc(p.linkedin_url)}" target="_blank">LinkedIn instead</a>`:""}</span>`}
-        <br>${esc(pk.about||"")}</div>${emails}</div>`;
-    }).join("");
-  }
-  if(k.share_url){
-    out += `<div class="lead" style="margin-top:24px"><b>Shareable link</b> — send this page as-is:
-      <a style="color:var(--accent);word-break:break-all" href="${esc(k.share_url)}" target="_blank">${esc(k.share_url)}</a>
-      <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(k.share_url)}');this.textContent='Copied'">Copy link</button></div>`;
-  }
-  out += `<div class="cta"><h3 style="text-align:center;margin:0 0 .4em">Want this built and run for you every week?</h3>
+function aboutBlock(p, about){
+  const contact = p.email
+    ? ` · <span style="color:var(--ok)">${esc(p.email)}</span>`
+    : ` · <span style="color:var(--muted)">no verified email found${p.linkedin_url?`, <a style="color:var(--accent)" href="${esc(p.linkedin_url)}" target="_blank">LinkedIn instead</a>`:""}</span>`;
+  return `<div class="about"><b>${esc(pname(p)||"—")}</b> — ${esc(p.title||"")}${p.company?`, ${esc(p.company)}`:""}${contact}<br>${esc(about||"")}</div>`;
+}
+function paneInner(pk){
+  const p=pk.prospect||{};
+  if(pk._pending) return aboutBlock(p,"")+`<div class="pending">Writing this sequence…</div>`;
+  const emails=(pk.emails||[]).map(e=>`<div class="email"><button class="copy" onclick="cp(this)">Copy</button>
+      <div class="tag">Email ${esc(e.n)} · ${esc(e.role||"")}</div>
+      <div class="subj">${esc(e.subject||"")}</div>
+      <div class="body">${esc(e.body||"")}</div>
+      ${e.asset?`<a class="asset" href="${esc(e.asset.url||'#')}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
+  let note="";
+  if(!(pk.emails||[]).length) note=`<div class="warn">This sequence did not come back${pk.error?` (${esc(pk.error)})`:""}. The others are fine; rerun to retry this one.</div>`;
+  return aboutBlock(p, pk.about)+note+emails;
+}
+function ctaBlock(k){
+  return `<div class="cta"><h3 style="text-align:center;margin:0 0 .4em">Want this built and run for you every week?</h3>
     <p style="text-align:center">Pick a time right here, no redirects.</p>
     <div class="calendly-inline-widget" data-url="https://calendly.com/hifareeha/discovery-meeting-with-fareeha?hide_gdpr_banner=1" style="min-width:320px;height:660px;"></div>
     <div style="color:var(--muted);font-size:13px;text-align:center;margin-top:8px">Or just reply to hello@fareehafatima.com and we'll find a time.</div></div>
     <div class="foot">Generated from ${esc(k.domain)} + live prospect data</div>`;
-  loadCalendly();
-  return out;
+}
+function renderShell(k, prospects){
+  const a=k.assets||{}, m=k.market||{};
+  let mkt = a.product_summary?`<b>${esc(a.company||k.domain)}</b> — ${esc(a.product_summary)}`:"";
+  if(m.market_size) mkt+=` <b>(${Number(m.market_size).toLocaleString()} buyers in range)</b>`;
+  let out = `<div class="lead">${mkt}</div>`;
+  if(m.error) out += `<div class="warn">Prospect search issue: ${esc(m.error)}</div>`;
+  if(!prospects.length){
+    out += `<div class="warn">No matching prospects came back for this ICP. The live prospect pull can be rerun.</div>`;
+    return out + ctaBlock(k);
+  }
+  out += `<div class="h2">Your first ${prospects.length}, each with their own sequence (<span id="emailcount">0</span> emails)</div>`;
+  out += `<div class="tabs">`+prospects.map((p,i)=>
+    `<button class="tab${i===0?' on':''}" onclick="pick(${i})">${esc(pname(p)||('#'+(i+1)))} · ${esc(p.company||'')}</button>`
+  ).join("")+`</div>`;
+  out += prospects.map((p,i)=>`<div class="pk${i===0?' on':''}" id="pk-${i}">${paneInner({prospect:p,_pending:true})}</div>`).join("");
+  out += `<div id="sharebox"></div>`;
+  return out + ctaBlock(k);
 }
 function loadCalendly(){
   if(document.getElementById('caljs')) { if(window.Calendly) setTimeout(()=>window.Calendly.initInlineWidgets&&window.Calendly.initInlineWidgets(),300); return; }
   const s=document.createElement('script'); s.id='caljs'; s.src='https://assets.calendly.com/assets/external/widget.js'; s.async=true;
   document.body.appendChild(s);
+}
+async function postJSON(url, body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({error:'unreadable response'}));
+  return {ok:r.ok, j};
 }
 
 async function go(){
@@ -151,15 +166,50 @@ async function go(){
   proc.style.display='block';si=0;STEPS.forEach(s=>{const el=document.getElementById(s);el.className='step';el.querySelector('.dot').textContent=STEPS.indexOf(s)+1;});
   stepLoop();
   try{
-    const r=await fetch('/api/capture',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:raw})});
-    const k=await r.json();
-    clearTimeout(stepTimer);
-    STEPS.forEach(s=>{const el=document.getElementById(s);el.classList.add('done');el.querySelector('.dot').textContent='✓';});
-    btn.disabled=false;
-    if(!r.ok||k.error){err.textContent=k.error||'Something went wrong.';err.style.display='block';proc.style.display='none';return;}
-    if(k.cached&&k.share_url){window.location.href=k.share_url;return;}
-    setTimeout(()=>{proc.style.display='none';res.innerHTML=render(k);res.style.display='block';res.scrollIntoView({behavior:'smooth',block:'start'});},400);
-  }catch(e){clearTimeout(stepTimer);btn.disabled=false;err.textContent='Could not reach the agent: '+e.message;err.style.display='block';}
+    // 1) analyze: site + assets + prospects (fast, well under 60s)
+    const {ok, j:base}=await postJSON('/api/analyze',{domain:raw});
+    stepsDone(); btn.disabled=false;
+    if(!ok||base.error){err.textContent=base.error||'Something went wrong.';err.style.display='block';proc.style.display='none';return;}
+    if(base.cached&&base.share_url){window.location.href=base.share_url;return;}
+
+    const kit={domain:base.domain, slug:base.slug, assets:base.assets||{}, market:base.market||{}, prospect_kits:[], total_emails:0};
+    const prospects=(kit.market.prospects)||[];
+    proc.style.display='none';
+    res.innerHTML=renderShell(kit, prospects); res.style.display='block';
+    res.scrollIntoView({behavior:'smooth',block:'start'}); loadCalendly();
+    if(!prospects.length) return;
+
+    kit.prospect_kits=prospects.map(p=>({prospect:p, about:"", emails:[], _pending:true}));
+    const setCount=()=>{const el=document.getElementById('emailcount'); if(el) el.textContent=kit.prospect_kits.reduce((n,pk)=>n+((pk.emails||[]).length),0);};
+
+    // 2) sequences: one request per prospect, in parallel; fill each tab as it lands
+    await Promise.all(prospects.map(async (p,i)=>{
+      let pk;
+      try{
+        const {ok:sok, j}=await postJSON('/api/sequence',{assets:kit.assets, prospect:p});
+        pk=(sok && j && j.prospect) ? j
+           : {prospect:p, about:"", emails:[], error:(j&&j.error)||'request failed'};
+      }catch(e){ pk={prospect:p, about:"", emails:[], error:e.message}; }
+      kit.prospect_kits[i]=pk;
+      const el=document.getElementById('pk-'+i); if(el) el.innerHTML=paneInner(pk);
+      setCount();
+    }));
+    setCount();
+
+    // 3) share: render + store the page, return share_url
+    const shareKit={domain:kit.domain, slug:kit.slug, assets:kit.assets, market:kit.market,
+      prospect_kits:kit.prospect_kits.map(pk=>Object.assign({prospect:pk.prospect, about:pk.about||"", emails:pk.emails||[]}, pk.error?{error:pk.error}:{})),
+      total_emails:kit.prospect_kits.reduce((n,pk)=>n+((pk.emails||[]).length),0)};
+    const box=document.getElementById('sharebox');
+    const {ok:shok, j:sres}=await postJSON('/api/share', shareKit);
+    if(shok && sres.share_url && box){
+      box.innerHTML=`<div class="lead" style="margin-top:24px"><b>Shareable link</b> — send this page as-is:
+        <a style="color:var(--accent);word-break:break-all" href="${esc(sres.share_url)}" target="_blank">${esc(sres.share_url)}</a>
+        <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(sres.share_url)}');this.textContent='Copied'">Copy link</button></div>`;
+    } else if(box){
+      box.innerHTML=`<div class="warn" style="margin-top:24px">Shareable link could not be generated${(sres.share_error||sres.error)?`: ${esc(sres.share_error||sres.error)}`:""}. Your sequences above are still complete.</div>`;
+    }
+  }catch(e){clearTimeout(stepTimer);btn.disabled=false;err.textContent='Could not reach the agent: '+e.message;err.style.display='block';proc.style.display='none';}
 }
 </script>
 </body>

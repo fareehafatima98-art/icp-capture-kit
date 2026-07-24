@@ -139,57 +139,64 @@ JSON never breaks.
 """
     return core.llm_json(client, prompt, max_tokens=4000)
 
-def build_kit(domain):
+def slugify(domain):
+    return re.sub(r"[^a-z0-9]", "", core.clean_domain(domain).split(".")[0])
+
+def analyze(domain):
+    """The fast half of a run: scrape the site, extract assets, and pull enriched
+    prospects. No per-prospect Claude calls, so this stays well inside a 60s
+    serverless cap. The slow half (one Claude call per prospect) is sequence_for,
+    which the front-end fans out across separate /api/sequence requests so no
+    single call approaches the timeout."""
     domain = core.clean_domain(domain)
-    slug = re.sub(r"[^a-z0-9]", "", domain.split(".")[0])
     site = core.scrape_site(domain)
     client = core.anthropic_client()
     assets = extract_assets(client, domain, site)
     market = find_prospects(assets, enrich=os.environ.get("APOLLO_ENRICH") == "1")
+    return {"domain": domain, "slug": slugify(domain), "assets": assets, "market": market}
 
-    # The per-prospect sequences are independent, so run them concurrently.
-    # This keeps wall-clock roughly at one Claude call instead of five in a
-    # row, which is what lets the whole request finish inside a serverless
-    # time limit (e.g. Vercel's 60s cap). Output/order is unchanged.
-    #
-    # We stagger the starts by a fraction of a second each (instead of firing
-    # all five at the same instant) so the burst does not trip the API rate
-    # limit; combined with the single jittered retry in core.llm this is what
-    # took a run from 1/5 sequences landing to a full 5/5. The stagger is tiny
-    # relative to a sequence call, so the calls still overlap and the run stays
-    # well inside the 60s budget.
+def sequence_for(assets, prospect):
+    """One prospect's 5-email sequence, as a prospect-kit. Never raises for a
+    sequence failure: the reason is captured on the kit (error) so a short run
+    is debuggable and the other prospects still render."""
+    client = core.anthropic_client()
+    err = None
+    try:
+        seq = write_prospect_sequence(client, assets, prospect)
+        err = seq.get("error")
+    except Exception as e:
+        seq, err = {"about": "", "emails": []}, str(e)
+    pk = {"prospect": prospect, "about": seq.get("about", ""),
+          "emails": seq.get("emails", [])}
+    if err:
+        pk["error"] = err
+    return pk
+
+def build_kit(domain):
+    """Whole-run convenience for the CLI. The hosted API does NOT use this (it
+    would run all five sequences in one request and risk the 60s cap); it splits
+    the work across /api/analyze + /api/sequence + /api/share instead."""
+    base = analyze(domain)
+    assets, prospects = base["assets"], base["market"].get("prospects", [])
+
+    # Independent sequences, run concurrently with staggered starts so the burst
+    # does not trip the API rate limit (see STAGGER_SECONDS).
     def one_kit(i, p):
         time.sleep(i * STAGGER_SECONDS)
-        err = None
-        try:
-            seq = write_prospect_sequence(client, assets, p)
-            err = seq.get("error")
-        except Exception as e:
-            seq, err = {"about": "", "emails": []}, str(e)
-        pk = {"prospect": p, "about": seq.get("about", ""),
-              "emails": seq.get("emails", [])}
-        if err:
-            # Keep the reason on the kit instead of dropping it, so a short run
-            # (fewer than the expected 25 emails) is debuggable from the JSON.
-            pk["error"] = err
-        return pk
+        return sequence_for(assets, p)
 
-    prospects = market.get("prospects", [])
     if prospects:
         with ThreadPoolExecutor(max_workers=len(prospects)) as ex:
-            # map preserves order; range() supplies the stagger index per prospect
             prospect_kits = list(ex.map(one_kit, range(len(prospects)), prospects))
     else:
         prospect_kits = []
 
-    kit_obj = {"domain": domain, "slug": slug, "assets": assets, "market": market,
-               "prospect_kits": prospect_kits,
+    kit_obj = {**base, "prospect_kits": prospect_kits,
                "total_emails": sum(len(pk["emails"]) for pk in prospect_kits)}
     # Best-effort local persistence for the CLI. Serverless hosts (e.g. Vercel)
-    # have a read-only filesystem, so skip quietly if we cannot write; the kit
-    # is returned directly either way.
+    # have a read-only filesystem, so skip quietly if we cannot write.
     try:
-        out = pathlib.Path(__file__).resolve().parent / "output" / slug
+        out = pathlib.Path(__file__).resolve().parent / "output" / base["slug"]
         out.mkdir(parents=True, exist_ok=True)
         (out / "kit.json").write_text(json.dumps(kit_obj, indent=2), encoding="utf-8")
     except OSError:
