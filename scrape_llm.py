@@ -128,11 +128,38 @@ def extract_json(text):
             raise ValueError("No JSON found in model output:\n" + text[:500])
         return json.loads(m.group(0), strict=False)
 
-def llm_json(client, prompt, max_tokens=2000):
-    """llm() + extract_json with ONE extra attempt if the JSON is unparseable
-    (empty/refused output or malformed JSON). Transient HTTP errors are already
-    retried inside llm(); this covers the separate parse-failure case."""
-    try:
-        return extract_json(llm(client, prompt, max_tokens=max_tokens))
-    except (ValueError, json.JSONDecodeError):
-        return extract_json(llm(client, prompt, max_tokens=max_tokens))
+def llm_json(client, prompt, max_tokens=2000, schema=None):
+    """Get a JSON object from the model.
+
+    When `schema` is given, use structured outputs (output_config json_schema),
+    which makes the API guarantee the response is valid JSON matching the schema.
+    This is what eliminates the intermittent parse failures (unescaped quotes,
+    empty/refused output) that even a retry couldn't recover from. Supported on
+    current models (Sonnet 5 / Opus 4.8 / Haiku 4.5).
+
+    If structured outputs aren't available at runtime for ANY reason (older
+    anthropic SDK that doesn't accept output_config, an unsupported model, or a
+    transient error), we fall through to the tolerant extract_json path with one
+    retry — i.e. never worse than before.
+    """
+    if schema is not None:
+        try:
+            msg = client.messages.create(
+                model=MODEL, max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+                output_config={"format": {"type": "json_schema", "schema": schema}})
+            text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+            return json.loads(text)  # guaranteed valid JSON under structured outputs
+        except Exception:
+            pass  # unavailable/failed -> tolerant fallback below
+
+    # Tolerant path: extract_json + ONE retry on a parse or transient failure.
+    for attempt in range(2):
+        try:
+            return extract_json(llm(client, prompt, max_tokens=max_tokens))
+        except Exception as e:
+            parse = isinstance(e, (ValueError, json.JSONDecodeError))
+            if attempt == 0 and (parse or _is_transient(e)):
+                time.sleep(1.0)
+                continue
+            raise

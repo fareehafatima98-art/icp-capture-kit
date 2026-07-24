@@ -169,6 +169,41 @@ VOICE = """VOICE AND QUALITY BAR (strict):
 - Bodies open with "Hi {first}," using the REAL first name. One soft CTA per email, at the end.
 - Subjects: concrete and curiosity-pulling, 5-9 words, no clickbait."""
 
+# JSON schema for structured outputs: forces the model to return valid JSON in
+# exactly this shape, so a stray unescaped quote can't break the sequence. Every
+# object sets additionalProperties:false with an explicit required list (both
+# required by structured outputs); asset is an object OR null via anyOf.
+SEQUENCE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "about": {"type": "string"},
+        "emails": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "n": {"type": "integer"},
+                    "role": {"type": "string"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string"},
+                    "asset": {
+                        "anyOf": [
+                            {"type": "object", "additionalProperties": False,
+                             "properties": {"label": {"type": "string"}, "url": {"type": "string"}},
+                             "required": ["label", "url"]},
+                            {"type": "null"},
+                        ]
+                    },
+                },
+                "required": ["n", "role", "subject", "body", "asset"],
+            },
+        },
+    },
+    "required": ["about", "emails"],
+}
+
 def write_prospect_sequence(client, assets, prospect):
     first = prospect.get("first_name") or "there"
     prompt = f"""You are Fareeha's outbound agent. Write a 5-email sequence that
@@ -209,8 +244,10 @@ JSON never breaks.
     # 2600 is ample for a 5-email sequence (~950 tokens of content). It was briefly
     # 4000 "for headroom", but that let some sequences generate long enough to blow
     # the 60s serverless cap (504 FUNCTION_INVOCATION_TIMEOUT). Cap it so a single
-    # /api/sequence call stays comfortably under 60s, even if the parse-retry fires.
-    return core.llm_json(client, prompt, max_tokens=2600)
+    # /api/sequence call stays comfortably under 60s.
+    # SEQUENCE_SCHEMA makes the API return guaranteed-valid JSON (structured
+    # outputs), which is what fixed sequences intermittently failing to parse.
+    return core.llm_json(client, prompt, max_tokens=2600, schema=SEQUENCE_SCHEMA)
 
 def slugify(domain):
     return re.sub(r"[^a-z0-9]", "", core.clean_domain(domain).split(".")[0])
