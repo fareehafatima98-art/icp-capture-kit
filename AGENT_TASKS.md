@@ -15,11 +15,16 @@ BLOCKED with the exact error. Commit this file with your changes.
 ## BLOCKED
 
 - [ ] Push. Local main and branch claude/push-files-t6r4u2 are ready at the SAME commit
-      (3d4f1ff): base sync + docs + resilience fix, main fast-forwarded (no divergence, no
-      force needed). Claude Code's env has NO GitHub creds (no gh, no token, no helper).
-      ACTION FOR FAREEHA: run `! git push origin main` and `! git push origin claude/push-files-t6r4u2`
-      in the Claude Code prompt (Mac keychain should have creds). If it fails, switch to SSH:
+      (3083e00): base sync + docs + resilience fix, main fast-forwarded over origin/main
+      (no divergence, no force needed). Claude Code's env has NO GitHub creds (no gh, no token,
+      no helper). ACTION FOR FAREEHA: run `! git push origin main` (this is the one that matters
+      — see below) and `! git push origin claude/push-files-t6r4u2` in the Claude Code prompt
+      (Mac keychain should have creds). If it fails, switch to SSH:
       `git remote set-url origin git@github.com:fareehafatima98-art/icp-capture-kit.git` then retry.
+      NOTE: pushing main auto-deploys to PRODUCTION (kit.fareehafatima.com) — no manual promotion
+      needed. Confirmed from deploy history: every production-target deploy has githubCommitRef=main;
+      the claude branch only ever made PR previews. The blob-fix commit 06d1c2b was a preview that
+      was NEVER merged to main, which is exactly why prod lacked it. The main merge fixes that.
 - [ ] Add BLOB_READ_WRITE_TOKEN to prod env (Fareeha, in progress). Root cause of null share_url:
       the Blob store is connected via Vercel OIDC, which injects only BLOB_STORE_ID +
       BLOB_WEBHOOK_PUBLIC_KEY, not BLOB_READ_WRITE_TOKEN. storage.py needs the read-write token.
