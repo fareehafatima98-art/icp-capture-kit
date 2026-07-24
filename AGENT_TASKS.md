@@ -22,6 +22,16 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) CONFIRMED 25/25 LIVE on prod. edexia now renders a full, clean kit at
+      https://kit.fareehafatima.com/k/edexia — 25 emails across 5 unique-company AU buyers
+      (David Shaw/CREST, Dianne Bryant/Illawarra Grammar, Trish Stockbridge/Kambala, Bruce
+      McNalty/Townsville Grammar, Tahira Hussain/Wisdom), 0 dead asset links, inline text/html
+      (200, no attachment). One sequence 504'd at 61s on first try and the retry landed it in 30s
+      (5/5) — structured outputs (valid JSON, ~16-30s/call) + one retry = reliable 25/25.
+      This confirm reused saved prospects, so it cost ~0 Apollo credits.
+- [x] (Claude Code) Front-end retry (0f7512e): fetchSequence retries a failed/empty /api/sequence
+      once, recovering the occasional single-call 60s 504. JS parses clean. Unpushed (see INBOX) —
+      not required for the current kit, needed for real browser users.
 - [x] (Claude Code) JSON-validity fix (1ba3ad2): write_prospect_sequence now uses structured
       outputs (output_config json_schema, SEQUENCE_SCHEMA) so the API guarantees valid JSON —
       eliminates the unescaped-quote / no-JSON parse failures that capped run 3 at 15/25. Graceful
