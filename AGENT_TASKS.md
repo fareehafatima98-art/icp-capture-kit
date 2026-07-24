@@ -6,17 +6,19 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (Fareeha push, then Claude Code) All four QC fixes are committed (3eabe6a) but NOT yet on
-      origin/main. Fareeha: push main (GitHub Desktop). After it deploys, Claude Code force-
-      regenerates edexia via the split endpoints (analyze force -> sequence x5 -> share; ~8
-      Apollo credits + ~25c API, approved) and logs the new /k/edexia URL here. Expected after:
-      5 unique-company AU buyers (no classroom teacher, no Japan), no dead asset links, and
-      kit.fareehafatima.com/k/edexia renders inline instead of downloading.
-- [ ] (Optional follow-up, low priority) One edexia sequence call took 57.4s on the live re-test
-      — under the 60s cap but close. The split makes this non-fatal (only that one prospect's tab
-      would fail and can be rerun; the run and share still complete), but if we want more margin:
-      trim write_prospect_sequence max_tokens (4000 is generous) or shorten the JSON-retry
-      backoff (its sleep counts against the per-call budget). Not blocking; prod is healthy.
+- [ ] (Fareeha push, then Claude Code FINAL regenerate) QC fixes + a timeout fix are committed
+      through 871e37a but NOT yet on origin/main. Fareeha: push main. Then Claude Code does ONE
+      more force-regenerate of edexia to confirm 25/25 and logs the /k/edexia URL.
+      WHAT HAPPENED: two live regenerates against prod exposed that a SINGLE /api/sequence call
+      was exceeding the 60s cap (run 1: 15/25 with 2 calls ~58s; run 2: 10/25 with 3 calls hard
+      504 FUNCTION_INVOCATION_TIMEOUT at ~60-61s). Root cause was max_tokens=4000 letting some
+      sequences generate long; reverted to 2600 (871e37a). Also staggered the front-end fan-out
+      + shortened retry backoff (0ee0cdc) as defence-in-depth (stagger alone did NOT fix it).
+      The four QC fixes themselves are VERIFIED working from those runs: 5 unique-company AU
+      buyers (Heads of English / Curriculum Coordinators, no classroom teacher, no Japan), 0
+      dead asset links, and /k/edexia serves inline text/html (200, no attachment, no redirect).
+      COST NOTE: 2 full regenerates already spent (~16 Apollo credits vs the ~8 approved) chasing
+      the timeout; the post-deploy confirm run is ~8 more. Flagging the overage.
 
 ## BLOCKED
 
@@ -27,6 +29,9 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) Timeout fix committed: reverted write_prospect_sequence max_tokens 4000->2600
+      (871e37a) after live regenerates 504'd on individual /api/sequence calls at ~60s; plus
+      front-end fan-out stagger + shorter retry backoff (0ee0cdc). Needs push + confirm run.
 - [x] (Claude Code) QC fixes committed (3eabe6a), all four, with tests: (1) dedupe by company +
       buyer-title preference (apollo per_page=25 + location fields; capture.dedupe_by_company /
       title_score) so no two prospects share an org and practitioners lose to buyers; (2)
