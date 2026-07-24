@@ -2,7 +2,7 @@
 Self-contained helpers: .env loading, website scraping, and Claude calls.
 No external files needed. Used by capture.py.
 """
-import os, re, json, html, urllib.request, pathlib
+import os, re, json, html, time, random, urllib.request, pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
 
@@ -77,10 +77,29 @@ def anthropic_client():
         raise SystemExit("Set ANTHROPIC_API_KEY (in env or .env). See .env.example.")
     return anthropic.Anthropic(api_key=key)
 
-def llm(client, prompt, max_tokens=2000):
-    msg = client.messages.create(model=MODEL, max_tokens=max_tokens,
-                                 messages=[{"role": "user", "content": prompt}])
-    return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+def _is_transient(exc):
+    """429 rate limit, 529 overloaded, or a 5xx. These spike when several
+    per-prospect sequences hit the API at once, and they clear on a short wait."""
+    status = getattr(exc, "status_code", None)
+    if status in (429, 500, 502, 503, 529):
+        return True
+    msg = str(exc).lower()
+    return any(w in msg for w in ("overloaded", "rate limit", "rate_limit", "too many requests"))
+
+def llm(client, prompt, max_tokens=2000, retries=1):
+    # One retry with jittered backoff on a transient rate-limit/overload. The
+    # jitter keeps parallel prospect sequences from retrying in lockstep and
+    # colliding again. Kept short so a retry still fits Vercel's 60s cap.
+    for attempt in range(retries + 1):
+        try:
+            msg = client.messages.create(model=MODEL, max_tokens=max_tokens,
+                                         messages=[{"role": "user", "content": prompt}])
+            return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        except Exception as e:
+            if attempt < retries and _is_transient(e):
+                time.sleep(2 + random.uniform(0, 2))
+                continue
+            raise
 
 def extract_json(text):
     m = re.search(r"\{.*\}", text, re.S)

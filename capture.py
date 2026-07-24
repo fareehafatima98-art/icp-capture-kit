@@ -13,10 +13,14 @@ v3 upgrades over v2:
 
 Requires ANTHROPIC_API_KEY, APOLLO_API_KEY. APOLLO_ENRICH=1 for real names + emails.
 """
-import os, re, json, sys, pathlib
+import os, re, json, sys, time, pathlib
 from concurrent.futures import ThreadPoolExecutor
 import scrape_llm as core
 from apollo import Apollo
+
+# Delay between each concurrent prospect-sequence start, to spread the burst
+# across the API rate limit without serializing the calls (see build_kit).
+STAGGER_SECONDS = 0.8
 
 # quality floor: never write emails with a haiku-class model
 if "haiku" in os.environ.get("MODEL", "").lower():
@@ -145,18 +149,34 @@ def build_kit(domain):
     # This keeps wall-clock roughly at one Claude call instead of five in a
     # row, which is what lets the whole request finish inside a serverless
     # time limit (e.g. Vercel's 60s cap). Output/order is unchanged.
-    def one_kit(p):
+    #
+    # We stagger the starts by a fraction of a second each (instead of firing
+    # all five at the same instant) so the burst does not trip the API rate
+    # limit; combined with the single jittered retry in core.llm this is what
+    # took a run from 1/5 sequences landing to a full 5/5. The stagger is tiny
+    # relative to a sequence call, so the calls still overlap and the run stays
+    # well inside the 60s budget.
+    def one_kit(i, p):
+        time.sleep(i * STAGGER_SECONDS)
+        err = None
         try:
             seq = write_prospect_sequence(client, assets, p)
+            err = seq.get("error")
         except Exception as e:
-            seq = {"about": "", "emails": [], "error": str(e)}
-        return {"prospect": p, "about": seq.get("about", ""),
-                "emails": seq.get("emails", [])}
+            seq, err = {"about": "", "emails": []}, str(e)
+        pk = {"prospect": p, "about": seq.get("about", ""),
+              "emails": seq.get("emails", [])}
+        if err:
+            # Keep the reason on the kit instead of dropping it, so a short run
+            # (fewer than the expected 25 emails) is debuggable from the JSON.
+            pk["error"] = err
+        return pk
 
     prospects = market.get("prospects", [])
     if prospects:
         with ThreadPoolExecutor(max_workers=len(prospects)) as ex:
-            prospect_kits = list(ex.map(one_kit, prospects))  # map preserves order
+            # map preserves order; range() supplies the stagger index per prospect
+            prospect_kits = list(ex.map(one_kit, range(len(prospects)), prospects))
     else:
         prospect_kits = []
 
