@@ -10,12 +10,13 @@ BLOCKED with the exact error. Commit this file with your changes.
       token" (403). BLOB_READ_WRITE_TOKEN must contain the token starting with vercel_blob_rw_
       (from the Blob store's Settings), not the store ID or webhook key. Replace the value +
       redeploy, then re-test share_url.
-- [ ] (Fareeha, then Claude Code) Push main so the JSON-robustness fix (b8697df) ships. Local
-      main is 1 ahead of origin/main. Claude Code still cannot push from here (no creds in its
-      env). Fareeha: `git push origin main` from Terminal (the same way 3509b9e went up). After
-      that deploys AND the BLOB token value is fixed: Claude Code runs the live re-test —
-      POST /api/capture with force on a fresh domain, confirm share_url non-null AND 25/25
-      emails, log the share_url here.
+- [ ] (Fareeha, then Claude Code) Push main so the JSON-robustness fix AND the API split ship.
+      Local main is now several commits ahead of origin/main (latest 07bf05f, the API split).
+      Claude Code still cannot push from here (no creds in its env). Fareeha: `git push origin
+      main` from Terminal / GitHub Desktop (the same way 3509b9e went up). After that deploys AND
+      the BLOB token value is fixed: Claude Code runs the live re-test on the SPLIT flow — the UI
+      now calls /api/analyze then /api/sequence x5 in parallel then /api/share; confirm no 60s
+      timeout, 25/25 emails, and a non-null share_url. Log the share_url here.
 
 ## BLOCKED
 
@@ -26,6 +27,18 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) URGENT — split the API so no request runs all 5 sequences (commit 07bf05f).
+      The combined /api/capture run was blowing Vercel's 60s cap (plain-text timeout page).
+      Now: POST /api/analyze {domain,force} = scrape + assets + enriched prospects (fast half,
+      keeps the once-per-domain cache check); POST /api/sequence {assets,prospect} = one
+      prospect's 5-email kit; POST /api/share {kit} = render + Blob store -> share_url
+      (surfaces share_error). capture.build_kit refactored into analyze() + sequence_for()
+      (kept as the CLI path). web/index.html rewritten: analyze, render tab shell with pending
+      panes, fan out /api/sequence for all prospects IN PARALLEL filling each tab as it lands,
+      then /api/share for the link; per-prospect + share errors surfaced inline. /api/capture
+      kept for CLI/back-compat. Files: app.py, capture.py, web/index.html. Verified: endpoint
+      tests (analyze cache miss/hit/force, sequence, share ok/403/disabled), sequence_for
+      failure capture, and front-end JS parses clean. Needs live re-test after push+deploy.
 - [x] (Claude Code) JSON-robustness fix committed (b8697df) for the 4/5 empty sequences that
       Cowork Claude's prod test traced to JSON parse failures (not rate limits). scrape_llm:
       extract_json now strips a ```json fence, decodes from the first brace with raw_decode
