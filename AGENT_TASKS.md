@@ -25,6 +25,15 @@ BLOCKED with the exact error. Commit this file with your changes.
       needed. Confirmed from deploy history: every production-target deploy has githubCommitRef=main;
       the claude branch only ever made PR previews. The blob-fix commit 06d1c2b was a preview that
       was NEVER merged to main, which is exactly why prod lacked it. The main merge fixes that.
+      AUTH STATUS (confirmed 2026-07-24): pushing via the Claude Code `!` prompt fails
+      ("could not read Username ... Device not configured") for BOTH https and ssh — this Mac has
+      no cached GitHub creds, no ~/.ssh key, and no gh CLI, and `!` has no interactive prompt.
+      Resolution (do ONE, in the real Terminal.app so no token leaks into the session): (a)
+      `git push origin main` in Terminal and paste a fine-grained PAT (Contents: R/W) as the
+      password; or (b) `brew install gh && gh auth login && gh auth setup-git` then push (this
+      also unblocks `!` pushes here afterward); or (c) generate an ssh key, add it to GitHub, and
+      `git remote set-url origin git@github.com:fareehafatima98-art/icp-capture-kit.git`. Remote
+      is currently https.
 - [ ] Add BLOB_READ_WRITE_TOKEN to prod env (Fareeha, in progress). Root cause of null share_url:
       the Blob store is connected via Vercel OIDC, which injects only BLOB_STORE_ID +
       BLOB_WEBHOOK_PUBLIC_KEY, not BLOB_READ_WRITE_TOKEN. storage.py needs the read-write token.
