@@ -206,7 +206,11 @@ characters inside any string value (use single quotes if you must quote somethin
 JSON never breaks.
 {{"about":"...","emails":[{{"n":1,"role":"hook","subject":"...","body":"Hi {first}, ...","asset":{{"label":"...","url":"..."}}|null}}, ...5 total]}}
 """
-    return core.llm_json(client, prompt, max_tokens=4000)
+    # 2600 is ample for a 5-email sequence (~950 tokens of content). It was briefly
+    # 4000 "for headroom", but that let some sequences generate long enough to blow
+    # the 60s serverless cap (504 FUNCTION_INVOCATION_TIMEOUT). Cap it so a single
+    # /api/sequence call stays comfortably under 60s, even if the parse-retry fires.
+    return core.llm_json(client, prompt, max_tokens=2600)
 
 def slugify(domain):
     return re.sub(r"[^a-z0-9]", "", core.clean_domain(domain).split(".")[0])
