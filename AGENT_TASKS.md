@@ -6,50 +6,48 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] Fix null share_url in PRODUCTION. Code fix (storage.last_error + x-allow-overwrite +
-      app.py share_error) already exists on this branch tip. Production (kit.fareehafatima.com)
-      serves an OLDER intermediate deploy that lacks it and swallows Blob errors, so share_url
-      comes back null with no reason. Needs branch tip promoted to production (see BLOCKED),
-      then re-run a domain and read share_url / share_error to confirm the real Blob status.
-- [ ] Only 1 of 5 prospects got emails on the edexia run (5 emails, not 25). The 4 failures are
-      swallowed: build_kit catches the per-prospect exception but does NOT store the error on
-      the prospect kit, so we can't see why. Likely rate-limiting from firing 5 concurrent
-      Claude calls (ThreadPoolExecutor, max_workers=len(prospects)). Surface the per-prospect
-      error and/or add a small retry/stagger, then re-run to confirm 25 emails.
+- [ ] (Needs Fareeha, then Claude Code) After main is pushed AND BLOB_READ_WRITE_TOKEN is added
+      to prod env AND Vercel redeploys main: POST /api/capture with force on a test domain and
+      confirm (a) share_url is non-null (or read share_error for the real reason) and (b) 25/25
+      emails land with the retry+stagger fix. Log the share_url here. Claude Code will run this
+      re-test as soon as the deploy is live.
 
 ## BLOCKED
 
-- [ ] Push the local commit (52c95b5, docs + gitignore). No GitHub credentials in Claude Code's
-      environment: no gh CLI, no GH_TOKEN/GITHUB_TOKEN, no git credential helper. Commit is made
-      and ready. To push, Fareeha can either run `! git push -u origin claude/push-files-t6r4u2`
-      in the prompt (if her machine has GitHub creds/keychain), or provide a PAT with repo write
-      scope, or switch the remote to SSH (git remote set-url origin git@github.com:...).
-- [ ] Promote branch tip to production + confirm production branch. Needs Fareeha: decide
-      whether production tracks `main` (currently BEHIND this branch) or this deploy branch,
-      and authorize promoting the deploy so the share_url fix goes live. Also: Claude Code
-      cannot read Vercel env vars via MCP — confirm BLOB_READ_WRITE_TOKEN is set for the
-      Production environment (suspected root cause of null share_url).
+- [ ] Push. Local main and branch claude/push-files-t6r4u2 are ready at the SAME commit
+      (3d4f1ff): base sync + docs + resilience fix, main fast-forwarded (no divergence, no
+      force needed). Claude Code's env has NO GitHub creds (no gh, no token, no helper).
+      ACTION FOR FAREEHA: run `! git push origin main` and `! git push origin claude/push-files-t6r4u2`
+      in the Claude Code prompt (Mac keychain should have creds). If it fails, switch to SSH:
+      `git remote set-url origin git@github.com:fareehafatima98-art/icp-capture-kit.git` then retry.
+- [ ] Add BLOB_READ_WRITE_TOKEN to prod env (Fareeha, in progress). Root cause of null share_url:
+      the Blob store is connected via Vercel OIDC, which injects only BLOB_STORE_ID +
+      BLOB_WEBHOOK_PUBLIC_KEY, not BLOB_READ_WRITE_TOKEN. storage.py needs the read-write token.
+      Fareeha is adding it manually (store Settings -> copy token -> project env var) + redeploy.
+      DO NOT revoke the token.
 
 ## DONE
 
+- [x] (Claude Code) Decision 2 — 25-email resilience fix committed (3d4f1ff). scrape_llm.llm now
+      does one jittered-backoff retry on transient 429/529/5xx; build_kit staggers the concurrent
+      prospect-sequence starts (STAGGER_SECONDS=0.8/index) so the burst spreads across the rate
+      limit while still overlapping (stays inside Vercel's 60s cap), and stores the per-prospect
+      error on the kit instead of dropping it. Files: scrape_llm.py, capture.py. Verified with a
+      mocked run: order preserved, errors stored on failures only, counts correct. Needs live
+      re-test after deploy to confirm 25/25 (see INBOX).
+- [x] (Claude Code) Decision 1 — merged deploy-branch tip into main locally. Clean fast-forward
+      (main was exactly 3 commits behind: 06d1c2b surface-blob-errors, 25ec813 docs, 3d4f1ff
+      resilience). No force. main and the branch now point at 3d4f1ff, ready to push.
 - [x] (Claude Code) TASK 1 hybrid sync done. git-init'd the folder, added remote
-      fareehafatima98-art/icp-capture-kit, and synced FROM the deploy branch
-      claude/push-files-t6r4u2 (tip 06d1c2b). No force-push. Confirmed the original premise was
-      backwards: local was OLDER, missing api/index.py + vercel.json and behind on the Apollo
-      endpoint (/api/v1 + /mixed_people/api_search; old /v1 path 403s for API keys), concurrent
-      per-prospect sequences (fits Vercel 60s cap), and the read-only-FS guard. Verified all
-      v3.1 features present in the synced code (per-prospect 25 emails, email-first enrichment,
-      own-customer filter, location targeting, Blob share pages + share_url with error
-      surfacing, cache + force, inline Calendly calendly.com/hifareeha/discovery-meeting-with-
-      fareeha, no video placeholder, 60-90 word bar, haiku guard). Nothing missing to port.
+      fareehafatima98-art/icp-capture-kit, synced FROM the deploy branch (no force-push).
+      Confirmed the original premise was backwards: local was OLDER, missing api/index.py +
+      vercel.json and behind on the Apollo endpoint (old /v1 path 403s), concurrent sequences,
+      and the read-only-FS guard. All v3.1 features present in the synced code; nothing to port.
       Added CLAUDE.md + AGENT_TASKS.md to the repo; gitignored .claude/ and .vercel.
-- [x] (Claude Code) Verified live capture end to end (all but the share link). POST
-      /api/capture on kit.fareehafatima.com returned full real kits: stripe.com ~45s, edexia.com
-      (force) with 5 real enriched AU teacher prospects + verified emails. Confirms
-      ANTHROPIC_API_KEY, APOLLO_API_KEY, APOLLO_ENRICH=1 working at runtime, maxDuration=60 in
-      vercel.json (env-var task item done except BLOB, which is in BLOCKED). share_url null on
-      both and /k/edexia is 404 (nothing saved to Blob) -> moved to INBOX.
-- [x] (Cowork Claude) Built v3.1 feature set; discovered during task 1 that GitHub already
-      carries newer Vercel plumbing (api/index.py, vercel.json, Apollo/concurrency/FS
-      fixes). Task 1 rewritten above to hybrid-sync instead of force-push. Claude Code's
-      catch — correct call.
+- [x] (Claude Code) Verified live capture end to end (all but the share link). POST /api/capture
+      on kit.fareehafatima.com returned full real kits: stripe.com ~45s, edexia.com (force) with
+      5 real enriched AU teacher prospects + verified emails. Confirms ANTHROPIC_API_KEY,
+      APOLLO_API_KEY, APOLLO_ENRICH=1 working at runtime, maxDuration=60 in vercel.json.
+      share_url null on both (root cause = missing BLOB token, see BLOCKED).
+- [x] (Cowork Claude) Built v3.1 feature set; found that GitHub already carried the newer Vercel
+      plumbing. Task 1 rewritten to hybrid-sync instead of force-push. Claude Code's catch — correct.
