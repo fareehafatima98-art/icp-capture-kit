@@ -33,9 +33,14 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) JSON-validity fix (1ba3ad2): write_prospect_sequence now uses structured
+      outputs (output_config json_schema, SEQUENCE_SCHEMA) so the API guarantees valid JSON —
+      eliminates the unescaped-quote / no-JSON parse failures that capped run 3 at 15/25. Graceful
+      fallback to the tolerant parser if structured outputs are unavailable (old SDK / model /
+      transient) so it never regresses. Unit-tested all four paths + schema validity.
 - [x] (Claude Code) Timeout fix committed: reverted write_prospect_sequence max_tokens 4000->2600
       (871e37a) after live regenerates 504'd on individual /api/sequence calls at ~60s; plus
-      front-end fan-out stagger + shorter retry backoff (0ee0cdc). Needs push + confirm run.
+      front-end fan-out stagger + shorter retry backoff (0ee0cdc). Confirmed live: no more 504s.
 - [x] (Claude Code) QC fixes committed (3eabe6a), all four, with tests: (1) dedupe by company +
       buyer-title preference (apollo per_page=25 + location fields; capture.dedupe_by_company /
       title_score) so no two prospects share an org and practitioners lose to buyers; (2)
