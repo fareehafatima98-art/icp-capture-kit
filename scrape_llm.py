@@ -102,7 +102,36 @@ def llm(client, prompt, max_tokens=2000, retries=1):
             raise
 
 def extract_json(text):
-    m = re.search(r"\{.*\}", text, re.S)
-    if not m:
+    """Pull a JSON object out of a model response, tolerantly.
+
+    The model occasionally wraps the JSON in a ```json fence, appends a stray
+    sentence after the closing brace, or leaves literal newlines/tabs inside
+    string values (e.g. multi-line email bodies), all of which strict json.loads
+    rejects. So: drop a fence if present, decode from the first brace with
+    raw_decode (which ignores trailing junk), and use strict=False (which allows
+    control chars inside strings, preserving body line breaks)."""
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
+    if fenced:
+        text = fenced.group(1)
+    start = text.find("{")
+    if start == -1:
         raise ValueError("No JSON found in model output:\n" + text[:500])
-    return json.loads(m.group(0))
+    snippet = text[start:]
+    try:
+        obj, _ = json.JSONDecoder(strict=False).raw_decode(snippet)
+        return obj
+    except json.JSONDecodeError:
+        # Last resort: greedy outermost {...}, still non-strict.
+        m = re.search(r"\{.*\}", snippet, re.S)
+        if not m:
+            raise ValueError("No JSON found in model output:\n" + text[:500])
+        return json.loads(m.group(0), strict=False)
+
+def llm_json(client, prompt, max_tokens=2000):
+    """llm() + extract_json with ONE extra attempt if the JSON is unparseable
+    (empty/refused output or malformed JSON). Transient HTTP errors are already
+    retried inside llm(); this covers the separate parse-failure case."""
+    try:
+        return extract_json(llm(client, prompt, max_tokens=max_tokens))
+    except (ValueError, json.JSONDecodeError):
+        return extract_json(llm(client, prompt, max_tokens=max_tokens))

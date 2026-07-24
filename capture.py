@@ -51,7 +51,7 @@ Return ONLY JSON:
 SCRAPED COPY:
 {site_text[:16000]}
 """
-    return core.extract_json(core.llm(client, prompt, max_tokens=1700))
+    return core.llm_json(client, prompt, max_tokens=1700)
 
 def find_prospects(assets, enrich=False, top_n=5):
     """Fallback search -> enrich up to 8 -> prefer prospects WITH verified emails ->
@@ -132,10 +132,12 @@ The 5 emails, personalized to them:
 
 {VOICE}
 
-Return ONLY JSON:
+Return ONLY valid, parseable JSON, nothing before or after it. Do not use double-quote
+characters inside any string value (use single quotes if you must quote something), so the
+JSON never breaks.
 {{"about":"...","emails":[{{"n":1,"role":"hook","subject":"...","body":"Hi {first}, ...","asset":{{"label":"...","url":"..."}}|null}}, ...5 total]}}
 """
-    return core.extract_json(core.llm(client, prompt, max_tokens=2600))
+    return core.llm_json(client, prompt, max_tokens=4000)
 
 def build_kit(domain):
     domain = core.clean_domain(domain)
