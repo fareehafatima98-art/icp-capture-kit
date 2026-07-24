@@ -6,19 +6,23 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (Fareeha push, then Claude Code FINAL regenerate) QC fixes + a timeout fix are committed
-      through 871e37a but NOT yet on origin/main. Fareeha: push main. Then Claude Code does ONE
-      more force-regenerate of edexia to confirm 25/25 and logs the /k/edexia URL.
-      WHAT HAPPENED: two live regenerates against prod exposed that a SINGLE /api/sequence call
-      was exceeding the 60s cap (run 1: 15/25 with 2 calls ~58s; run 2: 10/25 with 3 calls hard
-      504 FUNCTION_INVOCATION_TIMEOUT at ~60-61s). Root cause was max_tokens=4000 letting some
-      sequences generate long; reverted to 2600 (871e37a). Also staggered the front-end fan-out
-      + shortened retry backoff (0ee0cdc) as defence-in-depth (stagger alone did NOT fix it).
-      The four QC fixes themselves are VERIFIED working from those runs: 5 unique-company AU
-      buyers (Heads of English / Curriculum Coordinators, no classroom teacher, no Japan), 0
-      dead asset links, and /k/edexia serves inline text/html (200, no attachment, no redirect).
-      COST NOTE: 2 full regenerates already spent (~16 Apollo credits vs the ~8 approved) chasing
-      the timeout; the post-deploy confirm run is ~8 more. Flagging the overage.
+- [ ] (Fareeha push, then Claude Code FINAL regenerate) QC fixes + timeout fix + JSON-validity
+      fix are committed through 1ba3ad2 but NOT yet on origin/main. Fareeha: push main. Then
+      Claude Code does ONE more force-regenerate of edexia to confirm 25/25 and logs /k/edexia.
+      WHAT HAPPENED (3 live regenerates against prod): (1) run 1 = 15/25, two /api/sequence calls
+      ~58s; (2) run 2 = 10/25, three calls hard 504 FUNCTION_INVOCATION_TIMEOUT at ~60s — root
+      cause max_tokens=4000 let sequences generate long; reverted to 2600 (871e37a) + front-end
+      stagger/backoff (0ee0cdc). (3) run 3 = 15/25, NO timeouts, but 2 calls returned 0 emails on
+      JSON parse failures (unescaped quote / "No JSON found"), and the blind retry failed too.
+      Fix: route write_prospect_sequence through STRUCTURED OUTPUTS (output_config json_schema,
+      SEQUENCE_SCHEMA) so the API guarantees valid JSON; falls back to the tolerant parser if
+      unavailable (1ba3ad2). Expect 25/25 after deploy.
+      The four QC fixes are VERIFIED working from every run: 5 unique-company AU buyers (no
+      classroom teacher, no Japan), 0 dead asset links, /k/edexia serves inline (200, no attach).
+      COST NOTE: 3 full regenerates spent (~24 Apollo credits vs ~8 approved) chasing two distinct
+      root causes (timeout, then JSON validity); the post-deploy confirm is ~8 more. Overage owned
+      and flagged — I should have caught the max_tokens=4000 risk and used structured outputs from
+      the start rather than iterating on prod.
 
 ## BLOCKED
 
