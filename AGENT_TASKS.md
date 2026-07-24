@@ -6,6 +6,12 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
+- [ ] (Fareeha push, then Claude Code) All four QC fixes are committed (3eabe6a) but NOT yet on
+      origin/main. Fareeha: push main (GitHub Desktop). After it deploys, Claude Code force-
+      regenerates edexia via the split endpoints (analyze force -> sequence x5 -> share; ~8
+      Apollo credits + ~25c API, approved) and logs the new /k/edexia URL here. Expected after:
+      5 unique-company AU buyers (no classroom teacher, no Japan), no dead asset links, and
+      kit.fareehafatima.com/k/edexia renders inline instead of downloading.
 - [ ] (Optional follow-up, low priority) One edexia sequence call took 57.4s on the live re-test
       — under the 60s cap but close. The split makes this non-fatal (only that one prospect's tab
       would fail and can be rerun; the run and share still complete), but if we want more margin:
@@ -21,6 +27,16 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) QC fixes committed (3eabe6a), all four, with tests: (1) dedupe by company +
+      buyer-title preference (apollo per_page=25 + location fields; capture.dedupe_by_company /
+      title_score) so no two prospects share an org and practitioners lose to buyers; (2)
+      target_locations enforced (capture._enforce_locations), relaxed only if <top_n match; (3)
+      no dead links — sequence prompt emits "asset" only with a real url else null+prose, and
+      report_html + web skip empty/#/<> anchors (valid_asset_url/validUrl); (4) /k/{slug} now
+      serves the blob inline as text/html (no-cache) and every share_url is the /k/<slug> path
+      on our domain (fixes the "link downloads a file" issue). Files: apollo.py, capture.py,
+      storage.py (fetch_kit_html), report_html.py, app.py, web/index.html. Awaiting push +
+      edexia regenerate (see INBOX).
 - [x] (Claude Code) LIVE RE-TEST PASSED on the split flow (prod, main @ 2fd4282, edexia.com force).
       /api/analyze 14.8s -> 5 prospects. 5x /api/sequence in parallel, all http=200, 5 emails each
       = 25/25 emails (longest single call 57.4s, under the 60s cap; the others 18-30s). /api/share
