@@ -51,6 +51,12 @@ navigator.clipboard.writeText(t).then(()=>{b.textContent='Copied';setTimeout(()=
 def esc(s):
     return H.escape(str(s if s is not None else ""))
 
+def valid_asset_url(u):
+    """A real link, not an empty/placeholder href. Guards against dead anchors
+    like <a href=''> or href='#' rendering as '<>' on the page."""
+    u = (u or "").strip()
+    return bool(u) and u not in ("#", "<>") and ("://" in u or u.startswith("/"))
+
 def render(kit):
     a = kit.get("assets") or {}
     m = kit.get("market") or {}
@@ -72,8 +78,9 @@ def render(kit):
         emails = ""
         for e in pk.get("emails", []):
             asset = ""
-            if e.get("asset"):
-                asset = f"<a class='asset' href='{esc(e['asset'].get('url','#'))}' target='_blank'>{esc(e['asset'].get('label','from your site'))}</a>"
+            a_url = (e.get("asset") or {}).get("url")
+            if valid_asset_url(a_url):
+                asset = f"<a class='asset' href='{esc(a_url.strip())}' target='_blank'>{esc((e.get('asset') or {}).get('label','from your site'))}</a>"
             emails += (f"<div class='email'><button class='copy' onclick='cp(this)'>Copy</button>"
                        f"<div class='tag'>Email {esc(e.get('n'))} · {esc(e.get('role',''))}</div>"
                        f"<div class='subj'>{esc(e.get('subject',''))}</div>"

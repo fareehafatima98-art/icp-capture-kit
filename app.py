@@ -22,7 +22,7 @@ Env: ANTHROPIC_API_KEY, APOLLO_API_KEY, APOLLO_ENRICH=1,
 import re, pathlib
 from typing import Any, Dict, List
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import capture, storage, report_html
 
@@ -59,11 +59,11 @@ def home():
 @app.post("/api/analyze")
 def analyze(req: DomainReq):
     slug = _slug(req.domain)
-    # once-per-domain limit: serve the stored kit if it exists
+    # once-per-domain limit: serve the stored kit if it exists. share_url is the
+    # /k/<slug> path on our domain (renders inline), not the raw blob URL.
     if not req.force:
-        existing = storage.find_kit(slug)
-        if existing:
-            return JSONResponse({"cached": True, "share_url": existing, "slug": slug})
+        if storage.find_kit(slug):
+            return JSONResponse({"cached": True, "share_url": "/k/" + slug, "slug": slug})
     try:
         base = capture.analyze(req.domain)
         base["cached"] = False
@@ -89,7 +89,9 @@ def share_page(req: ShareReq):
                                  "share_error": "blob storage not enabled "
                                  "(BLOB_READ_WRITE_TOKEN missing at runtime)"})
         share = storage.save_kit(kit["slug"], report_html.render(kit))
-        out = {"share_url": share, "slug": kit["slug"]}
+        # Return the /k/<slug> path on our domain (renders inline) rather than
+        # the raw blob URL (which downloads as an attachment).
+        out = {"share_url": ("/k/" + kit["slug"]) if share else None, "slug": kit["slug"]}
         if not share:
             out["share_error"] = storage.last_error()
         return JSONResponse(out)
@@ -102,15 +104,14 @@ def make(req: DomainReq):
     because running all five sequences here can exceed the 60s cap."""
     slug = _slug(req.domain)
     if not req.force:
-        existing = storage.find_kit(slug)
-        if existing:
-            return JSONResponse({"cached": True, "share_url": existing, "slug": slug})
+        if storage.find_kit(slug):
+            return JSONResponse({"cached": True, "share_url": "/k/" + slug, "slug": slug})
     try:
         kit = capture.build_kit(req.domain)
         share = None
         if storage.enabled():
             share = storage.save_kit(kit["slug"], report_html.render(kit))
-        kit["share_url"] = share
+        kit["share_url"] = ("/k/" + kit["slug"]) if share else None
         if not share:
             kit["share_error"] = (storage.last_error() if storage.enabled()
                                   else "blob storage not enabled (BLOB_READ_WRITE_TOKEN missing at runtime)")
@@ -121,7 +122,10 @@ def make(req: DomainReq):
 
 @app.get("/k/{slug}")
 def share(slug: str):
-    url = storage.find_kit(re.sub(r"[^a-z0-9]", "", slug.lower()))
-    if url:
-        return RedirectResponse(url)
+    # Serve the stored page inline from our own domain. We fetch the blob server
+    # side and return it as text/html; redirecting to the raw blob URL would make
+    # the browser DOWNLOAD the file (Vercel Blob sets content-disposition:attachment).
+    html = storage.fetch_kit_html(re.sub(r"[^a-z0-9]", "", slug.lower()))
+    if html:
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
     return JSONResponse({"error": "no kit found for that domain"}, status_code=404)

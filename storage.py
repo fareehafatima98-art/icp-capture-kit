@@ -62,6 +62,23 @@ def find_kit(slug):
     except Exception as e:
         return _capture("find_kit", e)
 
+def fetch_kit_html(slug):
+    """Download the stored share page's HTML for a slug, or None. Used to serve
+    the page inline through our own domain (/k/<slug>): the raw Blob URL is sent
+    with content-disposition: attachment, so linking to it downloads the file
+    instead of rendering it."""
+    global _LAST_ERROR
+    _LAST_ERROR = None
+    url = find_kit(slug)
+    if not url:
+        return None
+    try:
+        # public blob: a plain GET needs no auth
+        with urllib.request.urlopen(urllib.request.Request(url), timeout=15) as r:
+            return r.read().decode("utf-8", "ignore")
+    except Exception as e:
+        return _capture("fetch_kit_html", e)
+
 def save_kit(slug, html):
     """Upload the share page; returns its public URL (stable path, overwrite allowed)."""
     global _LAST_ERROR

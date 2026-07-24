@@ -102,6 +102,8 @@ function pick(i){
   document.querySelectorAll(".pk").forEach((p,j)=>p.classList.toggle("on",i===j));
 }
 function pname(p){return p.name||p.first_name||"";}
+function validUrl(u){u=(u||"").trim();return !!u && u!=="#" && u!=="<>" && (u.indexOf("://")>-1 || u.charAt(0)==="/");}
+function absShare(u){return (u && u.charAt(0)==="/") ? location.origin+u : u;}  // /k/<slug> on our domain
 
 function aboutBlock(p, about){
   const contact = p.email
@@ -116,7 +118,7 @@ function paneInner(pk){
       <div class="tag">Email ${esc(e.n)} · ${esc(e.role||"")}</div>
       <div class="subj">${esc(e.subject||"")}</div>
       <div class="body">${esc(e.body||"")}</div>
-      ${e.asset?`<a class="asset" href="${esc(e.asset.url||'#')}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
+      ${(e.asset&&validUrl(e.asset.url))?`<a class="asset" href="${esc(e.asset.url.trim())}" target="_blank">${esc(e.asset.label||'from your site')}</a>`:""}</div>`).join("");
   let note="";
   if(!(pk.emails||[]).length) note=`<div class="warn">This sequence did not come back${pk.error?` (${esc(pk.error)})`:""}. The others are fine; rerun to retry this one.</div>`;
   return aboutBlock(p, pk.about)+note+emails;
@@ -203,9 +205,10 @@ async function go(){
     const box=document.getElementById('sharebox');
     const {ok:shok, j:sres}=await postJSON('/api/share', shareKit);
     if(shok && sres.share_url && box){
+      const link=absShare(sres.share_url);
       box.innerHTML=`<div class="lead" style="margin-top:24px"><b>Shareable link</b> — send this page as-is:
-        <a style="color:var(--accent);word-break:break-all" href="${esc(sres.share_url)}" target="_blank">${esc(sres.share_url)}</a>
-        <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(sres.share_url)}');this.textContent='Copied'">Copy link</button></div>`;
+        <a style="color:var(--accent);word-break:break-all" href="${esc(link)}" target="_blank">${esc(link)}</a>
+        <button class="tab" style="margin-left:8px" onclick="navigator.clipboard.writeText('${esc(link)}');this.textContent='Copied'">Copy link</button></div>`;
     } else if(box){
       box.innerHTML=`<div class="warn" style="margin-top:24px">Shareable link could not be generated${(sres.share_error||sres.error)?`: ${esc(sres.share_error||sres.error)}`:""}. Your sequences above are still complete.</div>`;
     }

@@ -40,12 +40,19 @@ class Apollo:
         # 403 for API keys. This endpoint requires a MASTER Apollo API key.
         r = self._post("/mixed_people/api_search", body)
         total = (r.get("pagination") or {}).get("total_entries")
-        sample = [{"id": p.get("id"),
-                   "first_name": p.get("first_name"),
-                   "title": p.get("title"),
-                   "company": (p.get("organization") or {}).get("name"),
-                   "linkedin_url": p.get("linkedin_url")}
-                  for p in (r.get("people") or [])]
+        sample = []
+        for p in (r.get("people") or []):
+            org = p.get("organization") or {}
+            sample.append({"id": p.get("id"),
+                           "first_name": p.get("first_name"),
+                           "title": p.get("title"),
+                           "company": org.get("name"),
+                           "linkedin_url": p.get("linkedin_url"),
+                           # location so callers can enforce target_locations
+                           "country": p.get("country"),
+                           "state": p.get("state"),
+                           "city": p.get("city"),
+                           "org_country": org.get("country")})
         return {"total": total, "sample": sample, "error": r.get("_error")}
 
     def enrich_people(self, ids):
@@ -58,14 +65,20 @@ class Apollo:
         for m in (r.get("matches") or []):
             if not m:
                 continue
+            org = m.get("organization") or {}
             out.append({
                 "name": m.get("name") or " ".join(
                     x for x in [m.get("first_name"), m.get("last_name")] if x),
                 "first_name": m.get("first_name"),
                 "title": m.get("title"),
-                "company": (m.get("organization") or {}).get("name"),
+                "company": org.get("name"),
                 "email": m.get("email"),
                 "email_status": m.get("email_status"),
                 "linkedin_url": m.get("linkedin_url"),
+                # location so callers can enforce target_locations post-enrichment
+                "country": m.get("country"),
+                "state": m.get("state"),
+                "city": m.get("city"),
+                "org_country": org.get("country"),
             })
         return out

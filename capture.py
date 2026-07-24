@@ -53,9 +53,61 @@ SCRAPED COPY:
 """
     return core.llm_json(client, prompt, max_tokens=1700)
 
+# Title heuristics: prefer people who actually BUY (leaders/heads) over
+# practitioners (e.g. a classroom teacher rather than a principal).
+BUYER_WORDS = ("chief", "head", "director", "vp", "vice president", "principal", "president",
+               "founder", "owner", "ceo", "cto", "coo", "cfo", "cmo", "superintendent", "dean",
+               "partner", "lead", "manager", "coordinator", "deputy")
+PRACTITIONER_WORDS = ("teacher", "engineer", "developer", "analyst", "specialist", "associate",
+                      "assistant", "representative", "intern", "clerk", "tutor", "aide", "nurse")
+
+def title_score(title):
+    t = (title or "").lower()
+    s = 0
+    if any(w in t for w in BUYER_WORDS):
+        s += 2
+    if any(w in t for w in PRACTITIONER_WORDS):
+        s -= 2
+    if any(w in t for w in ("chief", "head", "principal", "director", "vice president",
+                            "superintendent", "founder", "ceo", "cto", "president", "owner")):
+        s += 1   # unambiguous leadership
+    return s
+
+def _loc_haystack(p):
+    return " ".join(str(p.get(k) or "") for k in ("country", "state", "city", "org_country")).lower()
+
+def loc_match(p, locs):
+    """True if the prospect's person/org location mentions any target location."""
+    hay = _loc_haystack(p)
+    return any(str(l).strip().lower() in hay for l in (locs or []) if str(l).strip())
+
+def dedupe_by_company(people):
+    """One prospect per organization, keeping the highest-scoring (most buyer-like)
+    title within each company. Order follows first appearance."""
+    best, order = {}, []
+    for p in people:
+        k = (p.get("company") or "").strip().lower() or ("obj:" + str(id(p)))
+        if k not in best:
+            best[k] = p
+            order.append(k)
+        elif title_score(p.get("title")) > title_score(best[k].get("title")):
+            best[k] = p
+    return [best[k] for k in order]
+
+def _enforce_locations(people, locs, top_n):
+    """Require a location match when target_locations is set; relax to include
+    non-matching prospects only if too few match to fill top_n."""
+    if not locs:
+        return people
+    matching = [p for p in people if loc_match(p, locs)]
+    if len(matching) >= top_n:
+        return matching
+    return matching + [p for p in people if not loc_match(p, locs)]
+
 def find_prospects(assets, enrich=False, top_n=5):
-    """Fallback search -> enrich up to 8 -> prefer prospects WITH verified emails ->
-    filter out the company's own named customers. Surfaces errors."""
+    """Search -> one per company (buyer titles preferred) -> enforce target
+    locations -> enrich up to 8 -> prefer prospects WITH verified emails ->
+    never pitch the company's own named customers. Surfaces errors."""
     if not os.environ.get("APOLLO_API_KEY"):
         return {"market_size": None, "prospects": [], "enriched": False,
                 "error": "APOLLO_API_KEY is not set on the server"}
@@ -71,7 +123,9 @@ def find_prospects(assets, enrich=False, top_n=5):
     ]
     r, err = {}, None
     for a in attempts:
-        r = ap.people_count(titles, per_page=10, **a)
+        # Pull a wider net (25) so there's room to drop duplicate companies,
+        # off-location people, and practitioners and still reach top_n.
+        r = ap.people_count(titles, per_page=25, **a)
         err = r.get("error")
         if r.get("sample"):
             break
@@ -82,13 +136,22 @@ def find_prospects(assets, enrich=False, top_n=5):
     def is_customer(p):
         co = (p.get("company") or "").strip().lower()
         return bool(co) and any(co in k or k in co for k in known)
-    sample = [p for p in sample if not is_customer(p)]
 
-    prospects = sample
-    if enrich and sample:
-        real = ap.enrich_people([p["id"] for p in sample[:8] if p.get("id")])
+    def refine(people):
+        people = [p for p in people if not is_customer(p)]
+        people = dedupe_by_company(people)              # one per organization
+        people = _enforce_locations(people, locs, top_n)  # target locations first
+        people.sort(key=lambda p: -title_score(p.get("title")))  # buyers first (stable)
+        return people
+
+    candidates = refine(sample)
+
+    prospects = candidates
+    if enrich and candidates:
+        real = ap.enrich_people([p["id"] for p in candidates[:8] if p.get("id")])
         if real:
-            real = [p for p in real if not is_customer(p)]
+            # enrichment can reveal truer titles/companies/locations, so refine again
+            real = refine(real)
             with_email = [p for p in real if p.get("email")]
             without = [p for p in real if not p.get("email")]
             prospects = with_email + without
@@ -123,12 +186,18 @@ company (only what is given or reliably known; no guessing dressed as fact).
 
 The 5 emails, personalized to them:
 1. HOOK: the pressure {first} personally carries in this role at their company, then the core value.
-2. LEAD MAGNET: their single best real lead magnet (real name, url in "asset"). If none, the
-   strongest proof point, asset null.
+2. LEAD MAGNET: their single best real lead magnet. If it has a real url, put it in "asset".
+   If none, use the strongest proof point and set asset null.
 3. CASE STUDY: a REAL named case study with its concrete result, chosen for relevance to this
-   prospect. Customer name(s) in "asset". Never fabricate.
-4. PRODUCT / TRIAL: plain text, concrete, pointed at their situation. Trial url in "asset" if present.
+   prospect. Name the customer in the body prose. Never fabricate.
+4. PRODUCT / TRIAL: plain text, concrete, pointed at their situation.
 5. BREAKUP: warm close, door open.
+
+ASSET RULE (strict, prevents dead links): set "asset" ONLY when you have a real, non-empty URL
+copied verbatim from the seller's assets above (a lead_magnets url, the free_trial_url, or a
+real case-study page url that is actually present). Never invent a URL, never use "#", "<>", or
+an empty string. If there is no real URL, set "asset" to null and refer to the lead magnet /
+case study / trial BY NAME in the body prose instead. Most emails will have asset null.
 
 {VOICE}
 
