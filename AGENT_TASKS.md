@@ -6,17 +6,11 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (Fareeha) BLOB token VALUE is wrong, not missing: prod says "Cannot get store id from
-      token" (403). BLOB_READ_WRITE_TOKEN must contain the token starting with vercel_blob_rw_
-      (from the Blob store's Settings), not the store ID or webhook key. Replace the value +
-      redeploy, then re-test share_url.
-- [ ] (Fareeha, then Claude Code) Push main so the JSON-robustness fix AND the API split ship.
-      Local main is now several commits ahead of origin/main (latest 07bf05f, the API split).
-      Claude Code still cannot push from here (no creds in its env). Fareeha: `git push origin
-      main` from Terminal / GitHub Desktop (the same way 3509b9e went up). After that deploys AND
-      the BLOB token value is fixed: Claude Code runs the live re-test on the SPLIT flow — the UI
-      now calls /api/analyze then /api/sequence x5 in parallel then /api/share; confirm no 60s
-      timeout, 25/25 emails, and a non-null share_url. Log the share_url here.
+- [ ] (Optional follow-up, low priority) One edexia sequence call took 57.4s on the live re-test
+      — under the 60s cap but close. The split makes this non-fatal (only that one prospect's tab
+      would fail and can be rerun; the run and share still complete), but if we want more margin:
+      trim write_prospect_sequence max_tokens (4000 is generous) or shorten the JSON-retry
+      backoff (its sleep counts against the per-call budget). Not blocking; prod is healthy.
 
 ## BLOCKED
 
@@ -27,6 +21,15 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) LIVE RE-TEST PASSED on the split flow (prod, main @ 2fd4282, edexia.com force).
+      /api/analyze 14.8s -> 5 prospects. 5x /api/sequence in parallel, all http=200, 5 emails each
+      = 25/25 emails (longest single call 57.4s, under the 60s cap; the others 18-30s). /api/share
+      0.9s -> share_url with share_error=None (blob token now correct).
+      SHARE URL: https://gzbaq0nk2iyh6nku.public.blob.vercel-storage.com/kits/kit-edexia.html
+      Verified: page loads (200, 25KB, tabs+emails+inline Calendly, title "ICP Capture Kit —
+      Edexia"); /k/edexia now 307-redirects to it; /api/analyze without force returns cached=True
+      with the share_url (once-per-domain cache working). No 60s timeout anywhere. Fareeha can QC
+      the 25 emails at the share URL above.
 - [x] (Claude Code) URGENT — split the API so no request runs all 5 sequences (commit 07bf05f).
       The combined /api/capture run was blowing Vercel's 60s cap (plain-text timeout page).
       Now: POST /api/analyze {domain,force} = scrape + assets + enriched prospects (fast half,
