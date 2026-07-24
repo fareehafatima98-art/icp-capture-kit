@@ -183,9 +183,13 @@ async function go(){
 
     kit.prospect_kits=prospects.map(p=>({prospect:p, about:"", emails:[], _pending:true}));
     const setCount=()=>{const el=document.getElementById('emailcount'); if(el) el.textContent=kit.prospect_kits.reduce((n,pk)=>n+((pk.emails||[]).length),0);};
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-    // 2) sequences: one request per prospect, in parallel; fill each tab as it lands
+    // 2) sequences: one request per prospect, in parallel BUT staggered ~0.8s apart
+    // so the five Claude calls don't burst the API at once (a simultaneous burst
+    // rate-limits some calls into a retry that can approach the 60s function cap).
     await Promise.all(prospects.map(async (p,i)=>{
+      await sleep(i*800);
       let pk;
       try{
         const {ok:sok, j}=await postJSON('/api/sequence',{assets:kit.assets, prospect:p});

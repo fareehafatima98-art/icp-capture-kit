@@ -97,7 +97,8 @@ def llm(client, prompt, max_tokens=2000, retries=1):
             return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
         except Exception as e:
             if attempt < retries and _is_transient(e):
-                time.sleep(2 + random.uniform(0, 2))
+                # short, jittered: a retry must still leave room under the 60s cap
+                time.sleep(1 + random.uniform(0, 1))
                 continue
             raise
 
