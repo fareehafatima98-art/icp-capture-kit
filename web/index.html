@@ -185,17 +185,27 @@ async function go(){
     const setCount=()=>{const el=document.getElementById('emailcount'); if(el) el.textContent=kit.prospect_kits.reduce((n,pk)=>n+((pk.emails||[]).length),0);};
     const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-    // 2) sequences: one request per prospect, in parallel BUT staggered ~0.8s apart
-    // so the five Claude calls don't burst the API at once (a simultaneous burst
-    // rate-limits some calls into a retry that can approach the 60s function cap).
+    // one prospect's sequence, retried once on a failed/empty response. An
+    // individual /api/sequence call very occasionally hits the 60s function cap
+    // (tail latency) and returns a 504; a second attempt almost always lands in
+    // ~20s, so the retry is what makes the full 25/25 reliable.
+    async function fetchSequence(p){
+      let last={prospect:p, about:"", emails:[], error:"request failed"};
+      for(let attempt=0; attempt<2; attempt++){
+        try{
+          const {ok, j}=await postJSON('/api/sequence',{assets:kit.assets, prospect:p});
+          if(ok && j && j.prospect){ last=j; if((j.emails||[]).length) return j; }
+          else if(j && j.error){ last={prospect:p, about:"", emails:[], error:j.error}; }
+        }catch(e){ last={prospect:p, about:"", emails:[], error:e.message}; }
+      }
+      return last;
+    }
+
+    // 2) sequences: one request per prospect, in parallel BUT staggered ~0.8s
+    // apart so the five Claude calls don't burst the API at once.
     await Promise.all(prospects.map(async (p,i)=>{
       await sleep(i*800);
-      let pk;
-      try{
-        const {ok:sok, j}=await postJSON('/api/sequence',{assets:kit.assets, prospect:p});
-        pk=(sok && j && j.prospect) ? j
-           : {prospect:p, about:"", emails:[], error:(j&&j.error)||'request failed'};
-      }catch(e){ pk={prospect:p, about:"", emails:[], error:e.message}; }
+      const pk=await fetchSequence(p);
       kit.prospect_kits[i]=pk;
       const el=document.getElementById('pk-'+i); if(el) el.innerHTML=paneInner(pk);
       setCount();
