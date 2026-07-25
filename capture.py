@@ -27,10 +27,26 @@ if "haiku" in os.environ.get("MODEL", "").lower():
     os.environ["MODEL"] = "claude-sonnet-5"
     core.MODEL = "claude-sonnet-5"
 
+# A brand appearing anywhere on a site is NOT evidence it is a customer. Sites routinely
+# show third-party brands inside product demos, sample test cases, screenshots and
+# illustrations (e.g. foreai.co demos "Apply for CITI card" as a test case; Citi is not a
+# customer). Claiming those as customers puts a fabricated claim in a cold email, so the
+# bar is explicit presentation as a customer.
+CUSTOMER_EVIDENCE_RULE = """CUSTOMER EVIDENCE RULE (strict, do not bend):
+Only list a company under named_customers, case_studies or proof_points when the copy
+EXPLICITLY presents it as a customer of this company: a "trusted by" / "our customers" /
+logo-wall label, a testimonial or quote, or a named case study or success story.
+EXCLUDE any brand that appears only inside demo or product content, sample or example
+test cases, interactive "see it in action" walkthroughs, screenshots, integration lists,
+supported-platform lists, or illustrations. Those brands are subject matter, not customers.
+If you are not certain a brand is presented as a customer, leave it out."""
+
 def extract_assets(client, domain, site_text):
     prompt = f"""You are a sharp B2B go-to-market analyst reading {domain}. From the scraped
 copy below, extract REAL, specific assets. Do not invent. If something isn't present, return an
 empty list for it, do not fabricate.
+
+{CUSTOMER_EVIDENCE_RULE}
 
 Return ONLY JSON:
 {{
@@ -41,7 +57,7 @@ Return ONLY JSON:
  "employee_ranges": ["Apollo size buckets for their ICP, from 1,10 11,50 51,200 201,500 501,1000 1001,5000"],
  "keyword_tags": ["3-6 industry/segment tags for their ICP's employers"],
  "target_locations": ["countries/regions their site implies they sell into, e.g. Australia; empty if global"],
- "named_customers": ["every customer named anywhere in the copy"],
+ "named_customers": ["only companies the copy explicitly presents as customers (see rule above)"],
  "case_studies": [{{"customer":"named customer","result":"the concrete result or what they did"}}],
  "lead_magnets": [{{"name":"the free tool/calculator/guide","url":"its url if shown"}}],
  "free_trial_url": "url to try/sign up if present, else empty",
@@ -223,10 +239,20 @@ The 5 emails, personalized to them:
 1. HOOK: the pressure {first} personally carries in this role at their company, then the core value.
 2. LEAD MAGNET: their single best real lead magnet. If it has a real url, put it in "asset".
    If none, use the strongest proof point and set asset null.
-3. CASE STUDY: a REAL named case study with its concrete result, chosen for relevance to this
-   prospect. Name the customer in the body prose. Never fabricate.
+3. CASE STUDY: a REAL named case study from case_studies, with its concrete result, chosen for
+   relevance to this prospect. Name the customer in the body prose. Never fabricate. If
+   case_studies is empty, do NOT invent one and do not turn a named_customer into a case
+   study: use the hard aggregate proof from proof_points instead (real numbers, security
+   posture, deployment options) and keep the email concrete that way.
 4. PRODUCT / TRIAL: plain text, concrete, pointed at their situation.
 5. BREAKUP: warm close, door open.
+
+CUSTOMER CLAIM RULE (strict, prevents fabricated claims): the ONLY companies you may describe
+as customers, users, or clients of {assets.get('company')} are the ones listed in
+named_customers above. Never call any other company a customer, and never imply one, however
+plausible it looks. Any brand you saw elsewhere (in demos, examples, test cases, screenshots)
+is off limits. For a named_customer, you may say they are a customer but you may NOT attach a
+result, metric, or quote to them unless that exact pairing appears in case_studies.
 
 ASSET RULE (strict, prevents dead links): set "asset" ONLY when you have a real, non-empty URL
 copied verbatim from the seller's assets above (a lead_magnets url, the free_trial_url, or a
