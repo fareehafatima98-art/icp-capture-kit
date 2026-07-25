@@ -68,6 +68,10 @@ def analyze(req: DomainReq):
         base = capture.analyze(req.domain)
         base["cached"] = False
         return JSONResponse(base)
+    except capture.SiteUnreadable as e:
+        # Not our bug: the site gave us no brief. 422 (not 500) and the reason
+        # verbatim, so the UI tells the visitor what happened.
+        return JSONResponse({"error": str(e)}, status_code=422)
     except (Exception, SystemExit) as e:
         return JSONResponse({"error": str(e) or e.__class__.__name__}, status_code=500)
 
@@ -84,6 +88,18 @@ def sequence(req: SequenceReq):
 def share_page(req: ShareReq):
     kit = req.model_dump()
     try:
+        # Never store a kit built on an empty brief: the stored page IS the
+        # once-per-domain cache, so caching garbage keeps serving it forever
+        # (that is how the empty fresco-ai.com kit became the live page).
+        if not capture.has_brief(kit.get("assets")):
+            return JSONResponse({"share_url": None, "slug": kit["slug"],
+                                 "share_error": "not stored: this kit has no company name or "
+                                 "product summary, so the site was never really read"},
+                                status_code=422)
+        if not any(pk.get("emails") for pk in kit.get("prospect_kits") or []):
+            return JSONResponse({"share_url": None, "slug": kit["slug"],
+                                 "share_error": "not stored: the kit contains no emails"},
+                                status_code=422)
         if not storage.enabled():
             return JSONResponse({"share_url": None, "slug": kit["slug"],
                                  "share_error": "blob storage not enabled "
@@ -117,6 +133,8 @@ def make(req: DomainReq):
                                   else "blob storage not enabled (BLOB_READ_WRITE_TOKEN missing at runtime)")
         kit["cached"] = False
         return JSONResponse(kit)
+    except capture.SiteUnreadable as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
     except (Exception, SystemExit) as e:
         return JSONResponse({"error": str(e) or e.__class__.__name__}, status_code=500)
 
@@ -127,5 +145,10 @@ def share(slug: str):
     # the browser DOWNLOAD the file (Vercel Blob sets content-disposition:attachment).
     html = storage.fetch_kit_html(re.sub(r"[^a-z0-9]", "", slug.lower()))
     if html:
+        # Count the visit even for kits stored before the analytics snippet existed:
+        # inject it on the way out (idempotent) rather than rewriting every blob.
+        # Pages rendered from now on already carry it, from report_html.
+        if "/_vercel/insights/script.js" not in html:
+            html = html.replace("</head>", report_html.ANALYTICS + "</head>", 1)
         return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
     return JSONResponse({"error": "no kit found for that domain"}, status_code=404)

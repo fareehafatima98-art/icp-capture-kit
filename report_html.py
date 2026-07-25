@@ -6,6 +6,12 @@ Used for the stored share page at the blob URL.
 """
 import html as H
 
+# Vercel Web Analytics. Share pages are served through our own /k/<slug> route on
+# kit.fareehafatima.com, so this same-origin script counts a visit per path (which
+# founder opened which kit). app.share() also injects it into already-stored pages
+# on the way out, so kits rendered before this existed are counted too.
+ANALYTICS = '<script defer src="/_vercel/insights/script.js"></script>'
+
 CALENDLY = "https://calendly.com/hifareeha/discovery-meeting-with-fareeha"
 CONTACT_LINE = "Or just reply to my email, hello@fareehafatima.com, and we'll find a time."
 VIDEO_EMBED = ""   # paste a Loom/YouTube embed URL when the video is ready
@@ -96,7 +102,7 @@ def render(kit):
     total = kit.get("total_emails", sum(len(pk.get("emails", [])) for pk in pks))
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ICP Capture Kit — {esc(company)}</title><style>{CSS}</style></head><body>
+<title>ICP Capture Kit — {esc(company)}</title>{ANALYTICS}<style>{CSS}</style></head><body>
 <div class="wrap">
   <div class="kicker">ICP Capture Kit</div>
   <h1>{esc(company)} · your first {len(pks)} buyers, and the {total} emails to land them</h1>
