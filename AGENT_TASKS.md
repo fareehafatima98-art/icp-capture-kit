@@ -6,44 +6,16 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (URGENT — REBUILD foreai kit; approved cost ~$0.25 API, 0 Apollo credits) The live
-      /k/foreai kit has TWO problems. (a) FABRICATED CUSTOMERS: the emails claim Discover,
-      Citi, HSBC, Scotiabank are fore ai customers. They are NOT — on foreai.co those brands
-      appear only as interactive demo/test-case examples ("Apply for CITI card... see in
-      action"). Real trusted-by logos are: Google, UBS, Sixt, NZZ, Swiss Marketplace Group,
-      Uber. (b) Only 15/25 emails — Patrick (Rajah Travel) and Tony (Clal) tabs are empty.
-      Steps:
-      1. ENGINE RULE (permanent, in extract_assets prompt): only list a company under
-         named_customers / case_studies / proof_points when the site EXPLICITLY presents it
-         as a customer ("trusted by", testimonial, case study). Brands appearing in demo
-         content, sample test cases, or illustrations must be EXCLUDED. Add this to the
-         sequence-writing prompt too: never call a company a customer unless it is in
-         named_customers.
-      2. Rebuild the foreai kit WITHOUT re-running analyze: reuse the 5 prospects from the
-         live page (Patrick Trinidad/Rajah Travel prtrinidad@rajahtravel.com, Tony
-         Zilberman/Clal tonyz@clal-ins.co.il, Liz Martin/Markerstudy lizmartin@markerstudy.com,
-         Zulhelmi Azri/Etiqa zulhelmi.azri@etiqa.com.my, Taya Reynolds/Hays Travel
-         taya.reynolds@hays-travel.co.uk — titles/LinkedIn on the page). Correct the assets:
-         named_customers=[Google, UBS, Sixt, NZZ, Swiss Marketplace Group, Uber],
-         case_studies=[] (no public named case study; use honest aggregate proof instead),
-         proof_points=[90% less time and effort, 0 maintenance, 10x faster releases,
-         SOC2 II + ISO 27001, VPC/on-prem deployment, free trial at app.foreai.co],
-         free_trial_url=https://app.foreai.co.
-      3. Regenerate ALL FIVE sequences via /api/sequence with the corrected assets (all
-         previous sequences contain the false customer claims), assemble, POST /api/share,
-         verify /k/foreai shows 25 emails with NO mention of Discover/Citi/HSBC/Scotiabank
-         as customers.
-      4. Log in DONE.
-
 - [ ] (STRUCTURAL, so repairs are never manual again) Persist the kit JSON alongside the
       share page: /api/share also stores kits/kit-<slug>.json in Blob; add GET
       /api/kit/{slug} returning it; front-end + repairs can then resume/complete a partial
       kit without re-running analyze. Small, high-value.
 
-- [ ] (Fareeha) Push the front-end retry commit (0f7512e). It's the only unpushed change and is
-      NOT required for the current kit — the live /k/edexia is already the clean 25/25 page — but
-      real browser users need it so the front-end retries a 504'd sequence like the confirm run
-      did. `git push origin main` when convenient.
+- [ ] (Fareeha) Push the two unpushed commits: the front-end retry (0f7512e) and the engine
+      truth/language rules for capture.py (this session). Neither is needed for the live kits
+      (both /k/foreai and /k/edexia are already clean 25/25 pages) but prod runs the last PUSHED
+      commit, so until you push, a NEW domain can still (a) call a demo brand a customer and
+      (b) empty-tab a prospect whose company is in a non-Latin script. `git push origin main`.
 - [ ] (Fareeha) QC the 25 emails: https://kit.fareehafatima.com/k/edexia (renders inline, 25
       emails across 5 unique-company AU buyers, no dead links).
 
