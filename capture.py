@@ -255,8 +255,15 @@ CUSTOMER CLAIM RULE (strict, prevents fabricated claims): the ONLY companies you
 as customers, users, or clients of {assets.get('company')} are the ones listed in
 named_customers above. Never call any other company a customer, and never imply one, however
 plausible it looks. Any brand you saw elsewhere (in demos, examples, test cases, screenshots)
-is off limits. For a named_customer, you may say they are a customer but you may NOT attach a
-result, metric, or quote to them unless that exact pairing appears in case_studies.
+is off limits. About a named_customer you may state ONLY the bare fact that they are a
+customer. Unless that exact pairing appears in case_studies, you may not say or imply, in a
+subject line or a body, what they achieved, how or why they use it, what it replaced for them,
+or any metric, quote or motivation of theirs. Numbers in proof_points are aggregate product
+results, never one customer's result. So "Sixt cut testing time without adding headcount",
+"UBS runs on fore ai for exactly that reason", and "How UBS handles QA at scale" are all
+fabrications; "companies like UBS and Sixt run on it" is fine. When case_studies is empty,
+email 3 makes its case from aggregate proof_points plus this prospect's own situation, and
+never announces that no case study exists.
 
 ASSET RULE (strict, prevents dead links): set "asset" ONLY when you have a real, non-empty URL
 copied verbatim from the seller's assets above (a lead_magnets url, the free_trial_url, or a
