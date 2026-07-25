@@ -264,9 +264,10 @@ subject line or a body, what they achieved, how or why they use it, what it repl
 or any metric, quote or motivation of theirs. Numbers in proof_points are aggregate product
 results, never one customer's result. So "Sixt cut testing time without adding headcount",
 "UBS runs on fore ai for exactly that reason", and "How UBS handles QA at scale" are all
-fabrications; "companies like UBS and Sixt run on it" is fine. When case_studies is empty,
-email 3 makes its case from aggregate proof_points plus this prospect's own situation, and
-never announces that no case study exists.
+fabrications; "companies like UBS and Sixt run on it" is fine. When case_studies is empty:
+do not put a customer's name in ANY subject line (a subject that promises their story cannot
+be honoured by the body), make email 3's case from aggregate proof_points plus this prospect's
+own situation, and never announce that no case study exists.
 
 ASSET RULE (strict, prevents dead links): set "asset" ONLY when you have a real, non-empty URL
 copied verbatim from the seller's assets above (a lead_magnets url, the free_trial_url, or a
