@@ -8,6 +8,9 @@ v3 upgrades over v2:
   - Prospect selection prefers people with verified emails: enrich up to 8, keep the 5
     with emails first, so kits are ready-to-send.
   - Filters out the company's own named customers (never pitch their customers back).
+  - Truth rules: a brand only counts as a customer when the site explicitly presents it as one
+    (CUSTOMER_EVIDENCE_RULE), and emails may state only the bare fact that a named_customer is
+    a customer unless case_studies gives a real pairing (CUSTOMER CLAIM RULE).
   - Location targeting inferred from the site (e.g. Australia for AU curricula).
   - Explicit MODEL guard: refuses haiku for email writing (quality floor).
 
