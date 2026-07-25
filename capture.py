@@ -293,16 +293,45 @@ JSON never breaks.
 def slugify(domain):
     return re.sub(r"[^a-z0-9]", "", core.clean_domain(domain).split(".")[0])
 
+class SiteUnreadable(Exception):
+    """The site produced no usable brief, so the run must stop before it spends
+    Apollo credits and writes emails from nothing."""
+
+def has_brief(assets):
+    """True when the extracted assets are a real brief: a company name AND a
+    product summary. Everything downstream (Apollo titles/tags, every email)
+    is grounded in these, so empty means garbage in."""
+    a = assets or {}
+    return bool(str(a.get("company") or "").strip()
+                and str(a.get("product_summary") or "").strip())
+
 def analyze(domain):
     """The fast half of a run: scrape the site, extract assets, and pull enriched
     prospects. No per-prospect Claude calls, so this stays well inside a 60s
     serverless cap. The slow half (one Claude call per prospect) is sequence_for,
     which the front-end fans out across separate /api/sequence requests so no
-    single call approaches the timeout."""
+    single call approaches the timeout.
+
+    Raises SiteUnreadable rather than proceeding on an empty brief. fresco-ai.com
+    (client-rendered, so the scrape came back empty) previously ran all the way
+    through and produced a kit that searched Apollo with no ICP at all: Bill Gates,
+    Larry Fink and Satya Nadella as a construction startup's first buyers, with
+    sequences that invented the positioning. An unreadable site must fail loudly."""
     domain = core.clean_domain(domain)
     site = core.scrape_site(domain)
+    if len(site) < core.MIN_SITE_TEXT:
+        raise SiteUnreadable(
+            f"Could not read this site: {domain} returned "
+            f"{len(site)} characters of readable copy (need "
+            f"{core.MIN_SITE_TEXT}). It may be blocking us or rendering entirely "
+            "in the browser. Nothing was searched or written.")
     client = core.anthropic_client()
     assets = extract_assets(client, domain, site)
+    if not has_brief(assets):
+        raise SiteUnreadable(
+            f"Could not read this site: {domain} gave no usable company name or "
+            "product summary, so there is no ICP to search on. Nothing was "
+            "searched or written.")
     market = find_prospects(assets, enrich=os.environ.get("APOLLO_ENRICH") == "1")
     return {"domain": domain, "slug": slugify(domain), "assets": assets, "market": market}
 

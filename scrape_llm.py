@@ -21,13 +21,32 @@ MODEL = os.environ.get("MODEL", "claude-sonnet-5")
 # broad crawl so we land on proof + lead magnets
 CANDIDATE_PATHS = ["", "/customers", "/case-studies", "/success-stories", "/customer-stories",
                    "/resources", "/tools", "/product", "/products", "/platform", "/pricing",
-                   "/why", "/roi", "/blog"]
+                   "/why", "/roi", "/blog",
+                   # plain static pages that often carry the positioning even when the
+                   # marketing pages above are client-rendered and come back empty
+                   "/about", "/about-us", "/company", "/careers", "/solutions", "/use-cases"]
+
+# A JS-rendered site (e.g. a Next.js app whose <body> is filled in by the client)
+# returns plenty of HTML but no readable text, so strip_html yields nothing. The
+# reader proxy renders the page and returns plain text, which is our fallback.
+READER_PREFIX = "https://r.jina.ai/https://"
+
+# Below this many characters the brief is too thin to search Apollo or write emails
+# from. capture.analyze fails the run instead of guessing (see SiteUnreadable).
+MIN_SITE_TEXT = 500
+
+# Whole-scrape wall-clock budget. analyze must also extract assets and hit Apollo
+# inside one 60s serverless request, so the crawl cannot spend it all.
+SCRAPE_BUDGET_SECONDS = 22
+READER_BUDGET_SECONDS = 30
 
 def clean_domain(raw):
     raw = raw.strip().lower()
     raw = re.sub(r"^https?://", "", raw)
     raw = raw.split("/")[0]
-    return raw.lstrip("www.")
+    # str.lstrip takes a character SET, so lstrip("www.") ate leading w/. characters
+    # from real domains too (wow.com -> ow.com, which then scrapes as unreadable).
+    return raw[4:] if raw.startswith("www.") else raw
 
 def fetch(url, timeout=12):
     req = urllib.request.Request(url, headers={
@@ -48,23 +67,58 @@ def strip_html(h):
     text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
 
+def fetch_via_reader(url, timeout=20):
+    """Plain text for a page the plain fetch cannot read, via the reader proxy.
+    It executes the page's JS, so a client-rendered site yields real copy. No key
+    needed; on any failure (rate limit, outage) it returns "" and the caller falls
+    back to the garbage-in guard."""
+    text = fetch(READER_PREFIX + url.replace("https://", "").replace("http://", ""),
+                 timeout=timeout)
+    # the proxy returns markdown/plain text, so there is normally nothing to strip
+    return strip_html(text) if "<" in text else re.sub(r"\s+", " ", text).strip()
+
 def scrape_site(domain):
+    """Scrape readable copy for a domain: plain fetches first, then the reader
+    proxy if the site turns out to be client-rendered. Returns "" when the site
+    is genuinely unreadable, which capture.analyze treats as a hard failure."""
     base = "https://" + domain
+    started = time.monotonic()
     seen, chunks = set(), []
-    for path in CANDIDATE_PATHS:
-        raw = fetch(base + path)
-        if not raw:
-            continue
-        text = strip_html(raw)
+
+    def add(label, text):
         if len(text) < 120:
-            continue
+            return
         key = text[:200]
         if key in seen:
-            continue
+            return
         seen.add(key)
-        chunks.append(f"--- {base + path} ---\n{text[:4000]}")
+        chunks.append(f"--- {label} ---\n{text[:4000]}")
+
+    for path in CANDIDATE_PATHS:
+        if time.monotonic() - started > SCRAPE_BUDGET_SECONDS:
+            break
+        raw = fetch(base + path, timeout=8)
+        if raw:
+            add(base + path, strip_html(raw))
         if len(chunks) >= 7:
             break
+
+    total = sum(len(c) for c in chunks)
+    if total >= MIN_SITE_TEXT:
+        return "\n\n".join(chunks)
+
+    # Too thin to be a real brief: the site is probably client-rendered. Try the
+    # reader proxy on the home page, then on the few paths most likely to carry
+    # positioning, until we have enough text or run out of budget.
+    reader_started = time.monotonic()
+    for path in ("", "/about", "/blog", "/product"):
+        if time.monotonic() - reader_started > READER_BUDGET_SECONDS:
+            break
+        text = fetch_via_reader(base + path)
+        if text:
+            add(f"{base + path} (reader)", text)
+            if sum(len(c) for c in chunks) >= MIN_SITE_TEXT:
+                break
     return "\n\n".join(chunks)
 
 def anthropic_client():
