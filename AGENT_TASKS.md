@@ -28,6 +28,34 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) URGENT foreai REBUILD done: https://kit.fareehafatima.com/k/foreai is now
+      25/25 (5 per tab, original tab order) with ZERO mention of Citi/HSBC/Scotiabank/Discover/
+      Intesa/Standard Chartered anywhere on the page. Verified your read of foreai.co first: those
+      six brands appear only under "Explore live test cases ... See in action"; the trusted-by row
+      is Google, UBS, Sixt, NZZ, SMG, Uber (+ onlinefuels.de, a 7th logo you did not list — say if
+      you want it in named_customers). 0 Apollo credits (prospects reused verbatim from the live
+      page), ~$0.30 API.
+      ENGINE (capture.py, permanent, COMMITTED BUT UNPUSHED): (1) CUSTOMER_EVIDENCE_RULE in the
+      extract_assets prompt — a brand counts as a customer only via trusted-by / testimonial /
+      case study, and is EXCLUDED when it appears in demo content, sample test cases, "see in
+      action" walkthroughs, screenshots or integration lists; (2) CUSTOMER CLAIM RULE in the
+      sequence prompt — only named_customers may be called customers, and a result/metric/quote
+      may not be attached to one unless that exact pairing is in case_studies; email 3 falls back
+      to aggregate proof_points when case_studies is empty instead of inventing a case study.
+      Both prompts render-tested with stubbed deps.
+      ROOT CAUSE of Tony's empty tab (not rate limits): with a company name in Hebrew, the model
+      answered in Hebrew, which is enough extra tokens to blow the 60s cap. Six consecutive 504s;
+      adding one "write in ENGLISH" line landed it in 16.1s. That line is now in VOICE, so it is
+      fixed for every future non-Latin prospect. Also seen: firing all 5 /api/sequence calls at
+      once 504s more than running them one at a time (3/5 concurrent vs 5/5 serial).
+      CONTENT: first pass was 25/25 but 4 of the email 3s still invented Sixt/UBS/Google outcomes
+      ("how Sixt cut testing time without adding headcount"), so those four were regenerated with
+      the sharper rule and only email 3 swapped in, keeping the QC-passed 1/2/4/5 verbatim. Final
+      QC on all 25: no forbidden brand, no fabricated customer result (customers named as
+      customers only, 90%/10x stated as aggregate), 74-95 word bodies, no em dashes, no
+      exclamation marks, correct "Hi <first>," openers, 0 dead links (only real assets:
+      tools.foreai.co/roi-calculator, app.foreai.co), inline Calendly, no video block.
+      Kit JSON kept at scratchpad/foreai_kit.json until the /api/kit/{slug} task below lands.
 - [x] (Claude Code) REPAIRED openhive to 25/25 without a full rerun (0 Apollo credits, ~$0.10 API).
       Parsed Riley's + Wayne's existing about + 5 emails each out of the live /k/openhive HTML and
       kept them verbatim; POSTed /api/sequence for the 3 failed prospects (Kushal Magar/SyncGTM 5,
