@@ -55,6 +55,17 @@ BLOCKED with the exact error. Commit this file with your changes.
       exclamation marks, correct "Hi <first>," openers, 0 dead links (only real assets:
       tools.foreai.co/roi-calculator, app.foreai.co), inline Calendly, no video block.
       Kit JSON kept at scratchpad/foreai_kit.json until the /api/kit/{slug} task below lands.
+- [x] (Claude Code) Engine rule hardened in two more passes, because live tests showed the first
+      version was too soft. Prod with rule v1 still wrote "How UBS and Sixt handle QA at scale /
+      UBS runs on fore ai for exactly that reason" (invents how and why a real customer uses it),
+      so v2 (8f424d0) allows ONLY the bare fact that a named_customer is a customer unless
+      case_studies has that exact pairing, and names those observed phrasings as fabrications.
+      Verified live after deploy: bodies came back honest ("companies like UBS and Sixt run on it",
+      90%/10x stated as aggregate). One gap remained, the subject line "Why Google and UBS run QA
+      differently now", so v3 (1d7ba80) forbids a customer name in ANY subject when case_studies
+      is empty. v3 is committed and pushed but NOT yet verified live: the run I did after it was
+      still hitting the v2 deploy (subjects came back clean there, which is variance, not proof).
+      Worth one spot-check on the next real run.
 - [x] (Claude Code) REPAIRED openhive to 25/25 without a full rerun (0 Apollo credits, ~$0.10 API).
       Parsed Riley's + Wayne's existing about + 5 emails each out of the live /k/openhive HTML and
       kept them verbatim; POSTed /api/sequence for the 3 failed prospects (Kushal Magar/SyncGTM 5,
