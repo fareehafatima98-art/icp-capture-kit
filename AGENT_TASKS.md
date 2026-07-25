@@ -11,11 +11,10 @@ BLOCKED with the exact error. Commit this file with your changes.
       /api/kit/{slug} returning it; front-end + repairs can then resume/complete a partial
       kit without re-running analyze. Small, high-value.
 
-- [ ] (Fareeha) Push the two unpushed commits: the front-end retry (0f7512e) and the engine
-      truth/language rules for capture.py (this session). Neither is needed for the live kits
-      (both /k/foreai and /k/edexia are already clean 25/25 pages) but prod runs the last PUSHED
-      commit, so until you push, a NEW domain can still (a) call a demo brand a customer and
-      (b) empty-tab a prospect whose company is in a non-Latin script. `git push origin main`.
+- [x] (Claude Code) Push item CLOSED, nothing for you to do: pushes now land from this env by
+      themselves (each edit auto-commits as "Update <file>" and goes to origin/main). Confirmed
+      `git ls-remote origin main` == local HEAD, and the front-end retry 0f7512e is in origin/main
+      too, so it is live for browser users. The BLOCKED push entry below is stale, kept for history.
 - [ ] (Fareeha) QC the 25 emails: https://kit.fareehafatima.com/k/edexia (renders inline, 25
       emails across 5 unique-company AU buyers, no dead links).
 
