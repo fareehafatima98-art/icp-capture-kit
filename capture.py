@@ -183,7 +183,11 @@ VOICE = """VOICE AND QUALITY BAR (strict):
 - One honest human nod to what this person's role actually feels like. Never invent facts
   about the person; stay role-level unless a fact is given.
 - Bodies open with "Hi {first}," using the REAL first name. One soft CTA per email, at the end.
-- Subjects: concrete and curiosity-pulling, 5-9 words, no clickbait."""
+- Subjects: concrete and curiosity-pulling, 5-9 words, no clickbait.
+- Write the about text, every subject and every body in ENGLISH, even when the prospect's name
+  or company is written in another script. (Without this, a prospect whose company carries e.g.
+  Hebrew or Japanese text made the model answer in that language: far more tokens per character,
+  slow enough to blow the 60s serverless cap, so that prospect's tab came back empty.)"""
 
 # JSON schema for structured outputs: forces the model to return valid JSON in
 # exactly this shape, so a stray unescaped quote can't break the sequence. Every
