@@ -6,63 +6,16 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## INBOX
 
-- [ ] (Page-visit tracking) Fareeha is enabling Vercel Web Analytics on the project. Add the
-      tracking snippet to every page we serve so /k/<slug> visits are counted per path:
-      `<script defer src="/_vercel/insights/script.js"></script>` in (a) report_html.py's
-      rendered share pages and (b) web/index.html. Note the share pages are served through
-      our /k/{slug} route on kit.fareehafatima.com, so the script loads from the same origin
-      and per-path analytics (which founder viewed which kit) will just work. Re-render/
-      re-share the four live kits (edexia, openhive, foreai, bowe) from their stored data so
-      the already-sent links start tracking too — do NOT regenerate emails, only re-render
-      the HTML with the snippet. Commit + push.
-
-- [ ] (URGENT frescoai — HALF DONE, regen blocked on Anthropic credits, see BLOCKED. Steps 1+2
-      are written and committed (35fac2a, unpushed); step 3's domain correction is verified:
-      fresco.build gives 9269 chars with even the CURRENT deployed scraper (/ 4612 + /blog 4657)
-      and the copy matches your ground truth exactly — "Door (DFH) Takeoffs in Minutes", Division 8
-      subs, estimator/owner testimonials, all anonymous so named_customers will be empty. Note the
-      natural slug for fresco.build is "fresco", so when the regen runs I will POST /api/share
-      TWICE, once as slug frescoai to overwrite the garbage page and once as fresco. Nothing has
-      been regenerated yet and 0 Apollo credits were spent: analyze died in extract_assets, before
-      find_prospects.) Original task below.
-- [ ] (URGENT — frescoai kit is garbage-in-garbage-out; fix + regen, approved) The live
-      /k/frescoai kit is broken: fresco-ai.com failed to scrape (JS-rendered; site text came
-      back empty), the company summary is blank, and with no brief the Apollo search returned
-      absurd prospects (Bill Gates, Larry Fink, Satya Nadella as Fresco's "first buyers") and
-      the 2 generated sequences hallucinate a positioning. Steps:
-      1. GARBAGE-IN GUARD (permanent): in analyze, if scraped site text < ~500 chars OR
-         extract_assets returns an empty/blank company + empty product_summary, FAIL the run
-         with a clear error ("could not read this site") instead of proceeding. Never search
-         Apollo or write emails from an empty brief. Also: do NOT cache/share a kit whose
-         assets are empty.
-      2. SCRAPE FALLBACK for JS sites: try harder before failing — (a) also fetch common
-         static paths (/about, /careers, /blog posts), (b) try the r.jina.ai reader proxy
-         (https://r.jina.ai/https://<domain>) which renders JS and returns text, as a
-         fallback fetch. If still empty, fail per the guard.
-      3. DOMAIN CORRECTION (from Cowork Claude's research): the real site is FRESCO.BUILD —
-         fresco-ai.com is a near-empty shell, which is why the scrape came back blank.
-         Delete/overwrite the bad cached frescoai kit, then force-regenerate from
-         fresco.build end to end (analyze with the fixed scraper + 5 sequences + share).
-         Ground truth for verification (CURRENT positioning — they pivoted from the old YC
-         "superintendent copilot" story): Fresco (YC F24, also backed by Bessemer, SignalFire)
-         does DIVISION 8 TAKEOFFS — automated door/frame/hardware (DFH) counts from plans,
-         schedules and specs for commercial door contractors. Site headline "Door (DFH)
-         Takeoffs in Minutes"; testimonials are estimators/owners at Division 8 subcontractors
-         and door & hardware distributors; SOC 2 Type 2 (trust.fresco-ai.com); active blog.
-         fresco.build serves full static marketing content (verified scrapeable). Expected
-         ICP: estimators, senior estimators, owners at commercial door/hardware subcontractors
-         and distributors, US. Verify prospects match that and 25/25 before logging the share
-         URL (and make sure /k/frescoai no longer serves the garbage version).
-      Cost approved: full regen ~8 Apollo credits + ~$0.30 API.
-
 - [ ] (STRUCTURAL, so repairs are never manual again) Persist the kit JSON alongside the
       share page: /api/share also stores kits/kit-<slug>.json in Blob; add GET
       /api/kit/{slug} returning it; front-end + repairs can then resume/complete a partial
       kit without re-running analyze. Small, high-value.
 
-- [ ] (Fareeha, NOW BLOCKING BOTH TASKS ABOVE) `git push origin main` from your Terminal. Two
-      commits are stuck locally: 35fac2a (unreadable-site guard + scrape fallback) and 9f07d8c
-      (analytics snippet + the /_vercel rewrite fix + share guard). CORRECTION to my earlier note
+- [ ] (Fareeha, THE ONLY THING BLOCKING TRACKING) `git push origin main` from your Terminal.
+      Unpushed: 35fac2a (unreadable-site guard + scrape fallback), 9f07d8c (analytics snippet +
+      the /_vercel rewrite fix + share guard), plus the quote/statistics rule and log commits.
+      The frescoai kit did NOT need them (fresco.build scrapes fine on the deployed scraper), but
+      NO page counts a visit until 9f07d8c is live. CORRECTION to my earlier note
       that pushes now land by themselves: something did auto-commit and auto-push three times
       between 11:44 and 12:11 today (that is how 0f7512e finally shipped), then it stopped. My own
       push still fails, now with "could not read Username for https://github.com: Device not
@@ -72,7 +25,8 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## BLOCKED
 
-- [ ] (Fareeha) ANTHROPIC API CREDITS EXHAUSTED — this blocks every regeneration, not just
+- [x] RESOLVED same session (Fareeha added funds, frescoai regen then ran normally).
+      ANTHROPIC API CREDITS EXHAUSTED — this blocks every regeneration, not just
       frescoai. Exact error from prod, on both /api/analyze and /api/sequence:
       `Error code: 400 - {'type': 'invalid_request_error', 'message': 'Your credit balance is too
       low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase
@@ -88,6 +42,41 @@ BLOCKED with the exact error. Commit this file with your changes.
 
 ## DONE
 
+- [x] (Claude Code) frescoai REBUILT AND LIVE, garbage gone: https://kit.fareehafatima.com/k/frescoai
+      (and https://kit.fareehafatima.com/k/fresco, since fresco.build's natural slug is "fresco").
+      25/25, 5 per tab, 0 dead links, 0 occurrences of Bill Gates / Larry Fink / Satya Nadella /
+      BlackRock / Microsoft / Breakthrough Energy. Your domain correction was the fix: fresco.build
+      scrapes 9269 chars even on the OLD deployed scraper. Brief matches your ground truth: company
+      "Fresco", Division 8 door/frame/hardware takeoffs reconciling schedules, plans and specs;
+      buyer_titles estimator / senior estimator / owner / chief estimator / preconstruction /
+      BD; named_customers and case_studies both EMPTY (every site testimonial is anonymous) so the
+      customer-claim rules kept the emails honest; proof_points are the real anonymous quotes plus
+      SOC 2 Type 2. Prospects are all US Division 8: Dwayne Wells (Owner/Estimator, Liberty Glass,
+      GA), Hanah Hood (Preconstruction Manager, SHORE TOTAL, Denver), Danika Kain (BD Manager,
+      Hanover Specialties, VA), Benjamin Perez (Estimator, BREX Commercial Door, TX), Daniel Rosen
+      (Estimator, Benco Inc., NJ). ~8 Apollo credits, ~$0.45 API (the extra over estimate is the
+      email-3 rework below). Kit JSON: scratchpad/fresco_kit.json.
+      ENGINE, steps 1+2 (35fac2a, PUSH PENDING): SiteUnreadable guard in analyze - under 500 chars
+      of text, or no company/product_summary, fails the run BEFORE find_prospects, so a blank brief
+      can never spend Apollo credits again; /api/analyze returns 422 with the reason instead of 500;
+      /api/share refuses to store a kit with no brief or no emails (the stored page IS the cache,
+      which is why the garbage kit kept being served); scrape fallback = extra static paths then the
+      r.jina.ai reader proxy (fresco-ai.com goes 0 -> 2663 chars this way), both wall-clock budgeted
+      so analyze still fits 60s; foreai.co and edexia.com unchanged and never touch the proxy. Also
+      fixed clean_domain's lstrip("www.") - a character-set strip that turned wow.com into ow.com.
+      QC caught real defects in the first pass that mechanical checks miss, all in email 3, all from
+      quoting the site's ONE hedged anonymous testimonial ("this might have saved us on a job in
+      Denver where we missed 200 doors"): one email upgraded "might have" to "would have", two wrote
+      the quote's first person in Fareeha's voice ("we missed 200 doors"), one announced "we do not
+      have a named case study", and one invented "our aggregate data shows most Division 8
+      estimators...". Fixed by regenerating only email 3 for the three affected prospects against
+      new permanent QUOTE and STATISTICS rules in capture.py (keep a hedge on its own clause, never
+      speak a quote's first person, attribute anonymous quotes by role/company type, and state no
+      number or aggregate that is not in proof_points - no "our data shows", no invented
+      percentages). Final QC on all 25 is clean: no fabricated claim, no misquote, 55-95 word
+      bodies, no em dashes or exclamation marks, correct openers, no dead links (asset is null
+      throughout - Fresco publishes no lead-magnet or trial URL, so every email refers to the free
+      takeoff by name in prose).
 - [x] (Claude Code) Page-visit tracking CODE COMPLETE, waiting on a push to go live (commit
       9f07d8c, see BLOCKED). Snippet added to
       report_html's rendered share pages and web/index.html, and /k/{slug} injects it into

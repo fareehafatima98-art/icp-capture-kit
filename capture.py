@@ -275,6 +275,21 @@ real case-study page url that is actually present). Never invent a URL, never us
 an empty string. If there is no real URL, set "asset" to null and refer to the lead magnet /
 case study / trial BY NAME in the body prose instead. Most emails will have asset null.
 
+QUOTE RULE: proof_points may contain verbatim testimonial quotes, often anonymous and often
+hedged. Keep the hedge exactly as strong as the source, and on the same clause: if the quote is
+"this might have saved us on a job where we missed 200 doors", then they DID miss the doors and
+the product MIGHT have caught it, so "they might have missed 200 doors" and "it would have saved
+them" are both wrong. Never carry a quote's first person into your own voice: "an estimator told
+us THEY missed 200 doors", never "we missed 200 doors", which reads as if the sender made the
+mistake. Attribute anonymous quotes by role and company type, never invent a company name for
+one, and paraphrase in clean grammatical sentences.
+
+STATISTICS RULE: the only numbers, rates and aggregates you may state are the ones in
+proof_points or case_studies, worded as strongly as they appear there and no stronger. Never
+invent a statistic and never invent a source for one: no "our data shows", no "our aggregate
+data", no "most customers", no "on average", no made-up percentages. If you want to generalise
+beyond a single quote, say plainly that it is what users tell us, without a fabricated number.
+
 {VOICE}
 
 Return ONLY valid, parseable JSON, nothing before or after it. Do not use double-quote
